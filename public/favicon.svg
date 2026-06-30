@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d9ad82"/>
+      <stop offset="100%" stop-color="#b1835a"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d9ad82"/>
+      <stop offset="100%" stop-color="#b1835a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark rounded background -->
+  <rect width="32" height="32" rx="7" fill="#0d1117"/>
+
+  <!-- Top accent strip -->
+  <rect x="0" y="0" width="32" height="3" rx="1.5" fill="url(#g2)"/>
+
+  <!-- Bar chart: 3 ascending bars -->
+  <rect x="5"   y="21" width="6" height="7"  rx="1.5" fill="url(#g)" opacity="0.75"/>
+  <rect x="13"  y="15" width="6" height="13" rx="1.5" fill="url(#g)" opacity="0.88"/>
+  <rect x="21"  y="9"  width="6" height="19" rx="1.5" fill="url(#g)"/>
+
+  <!-- Tiny trend arrow on top of tallest bar -->
+  <polyline points="19,8 23,4 27,6" fill="none" stroke="#d9ad82" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  <circle cx="27" cy="6" r="1.4" fill="#d9ad82"/>
+</svg>
