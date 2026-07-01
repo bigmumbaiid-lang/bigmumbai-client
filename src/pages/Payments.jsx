@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import api from '../utils/axios';
+import DateRangePicker from '../components/DateRangePicker';
 import {
-  Search, Calendar, X, ExternalLink, RefreshCw, CreditCard,
+  Search, X, ExternalLink, RefreshCw, CreditCard, Calendar,
   TrendingUp, Clock, ChevronLeft, ChevronRight, Download,
 } from 'lucide-react';
 
@@ -40,10 +41,16 @@ export default function Payments() {
   const [endDate, setEndDate] = useState('');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
-  const [activeQuickFilter, setActiveQuickFilter] = useState('');
+  const [activeQuickFilter, setActiveQuickFilter] = useState('today');
 
   const limit = 20;
   const fmt = (d) => d.toISOString().split('T')[0];
+
+  // Set Today filter on mount
+  useEffect(() => {
+    const t = fmt(new Date()); setStartDate(t); setEndDate(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchPayments = async () => {
     if (minAmount && maxAmount && Number(minAmount) > Number(maxAmount)) {
@@ -98,32 +105,9 @@ export default function Payments() {
   useEffect(() => { fetchStats(); }, []);
   useEffect(() => { if (page > totalPages) setPage(totalPages || 1); }, [totalPages]); // eslint-disable-line
 
-  useEffect(() => {
-    if (!startDate || !endDate) { setActiveQuickFilter(''); return; }
-    const today = fmt(new Date());
-    if (startDate === today && endDate === today) { setActiveQuickFilter('today'); return; }
-    const now = new Date();
-    const fw = new Date(now); fw.setDate(now.getDate() - now.getDay());
-    const lw = new Date(fw); lw.setDate(fw.getDate() + 6);
-    if (startDate === fmt(fw) && endDate === fmt(lw)) { setActiveQuickFilter('week'); return; }
-    const fm = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lm = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    setActiveQuickFilter(startDate === fmt(fm) && endDate === fmt(lm) ? 'month' : '');
-  }, [startDate, endDate]);
-
-  const setToday = () => { const t = fmt(new Date()); setStartDate(t); setEndDate(t); setPage(1); };
-  const setThisWeek = () => {
-    const now = new Date();
-    const fw = new Date(now); fw.setDate(now.getDate() - now.getDay());
-    const lw = new Date(fw); lw.setDate(fw.getDate() + 6);
-    setStartDate(fmt(fw)); setEndDate(fmt(lw)); setPage(1);
-  };
-  const setThisMonth = () => {
-    const now = new Date();
-    setStartDate(fmt(new Date(now.getFullYear(), now.getMonth(), 1)));
-    setEndDate(fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
-    setPage(1);
-  };
+  const setToday    = () => { const t = fmt(new Date()); setStartDate(t); setEndDate(t); setActiveQuickFilter('today'); setPage(1); };
+  const setLast7    = () => { const n = new Date(); setStartDate(fmt(new Date(n-6*86400000))); setEndDate(fmt(n)); setActiveQuickFilter('last7'); setPage(1); };
+  const setLast30   = () => { const n = new Date(); setStartDate(fmt(new Date(n-29*86400000))); setEndDate(fmt(n)); setActiveQuickFilter('last30'); setPage(1); };
   const resetFilters = () => {
     setSearchInput(''); setSearch(''); setExactUsername('');
     setFilterStatus(''); setFilterChannel('');
@@ -166,9 +150,10 @@ export default function Payments() {
   );
 
   const quickButtons = [
-    { label: 'Today', key: 'today', fn: setToday },
-    { label: 'This Week', key: 'week', fn: setThisWeek },
-    { label: 'This Month', key: 'month', fn: setThisMonth },
+    { label: 'Today',       key: 'today',  fn: setToday  },
+    { label: 'Last 7 Days', key: 'last7',  fn: setLast7  },
+    { label: 'Last 30 Days',key: 'last30', fn: setLast30 },
+    { label: 'Custom',      key: 'custom', fn: () => setActiveQuickFilter('custom') },
   ];
 
   return (
@@ -287,15 +272,13 @@ export default function Payments() {
                   {btn.label}
                 </button>
               ))}
-              <div className="flex items-center gap-2 ml-1">
-                <input type="date" value={startDate}
-                  onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]" />
-                <span className="text-gray-400 text-sm">to</span>
-                <input type="date" value={endDate}
-                  onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]" />
-              </div>
+              {activeQuickFilter === 'custom' && (
+                <DateRangePicker
+                  from={startDate} to={endDate}
+                  onChange={(f, t) => { setStartDate(f); setEndDate(t); setPage(1); }}
+                  placeholder="Pick date range"
+                />
+              )}
             </div>
           </div>
 
@@ -315,7 +298,8 @@ export default function Payments() {
                     <th className="px-5 py-3.5 text-right font-semibold">Amount</th>
                     <th className="px-5 py-3.5 text-left font-semibold">Status</th>
                     <th className="px-5 py-3.5 text-left font-semibold">Channel</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Date (IST)</th>
+                    <th className="px-5 py-3.5 text-left font-semibold">Created (IST)</th>
+                    <th className="px-5 py-3.5 text-left font-semibold">Paid At (IST)</th>
                     <th className="px-5 py-3.5 text-left font-semibold">URL</th>
                   </tr>
                 </thead>
@@ -361,6 +345,18 @@ export default function Payments() {
                               timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
                               day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
                             })}
+                          </td>
+                          <td className="px-5 py-3.5 whitespace-nowrap text-xs">
+                            {p.successAt ? (
+                              <span className="text-emerald-600 font-medium">
+                                {new Date(p.successAt).toLocaleString('en-US', {
+                                  timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
+                                  day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
+                                })}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             {p.paymentUrl ? (

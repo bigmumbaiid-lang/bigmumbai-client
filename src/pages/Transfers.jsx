@@ -1,19 +1,16 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import axios from '../utils/axios';
+import DateRangePicker from '../components/DateRangePicker';
 import {
   Download, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, TrendingDown, ArrowLeftRight, BarChart3,
 } from 'lucide-react';
 
 const RANGES = [
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
-  { value: 'last7', label: 'Last 7 Days' },
+  { value: 'today',  label: 'Today' },
+  { value: 'last7',  label: 'Last 7 Days' },
   { value: 'last30', label: 'Last 30 Days' },
-  { value: 'all', label: 'All Time' },
   { value: 'custom', label: 'Custom' },
 ];
 
@@ -41,6 +38,15 @@ const TYPE_BADGE = {
   gift:       'bg-purple-100 text-purple-700',
   mines:      'bg-amber-100 text-amber-700',
   blackjack:  'bg-orange-100 text-orange-700',
+};
+
+const TITLE_COLOR = {
+  payment:    'text-emerald-600 font-semibold',
+  withdrawal: 'text-rose-600 font-semibold',
+  transfer:   'text-blue-600 font-semibold',
+  gift:       'text-purple-600 font-semibold',
+  mines:      'text-amber-600 font-semibold',
+  blackjack:  'text-orange-600 font-semibold',
 };
 
 const BRAND = 'linear-gradient(90deg,#d9ad82,#b1835a)';
@@ -103,9 +109,10 @@ export default function AdminTransactions() {
     const rows = data.transactions;
     if (!rows.length) return;
     const esc = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-    const lines = ['Date,Username,Type,Title,Amount'];
+    const lines = ['Date,Username,Type,Title,Amount,Balance Before,Balance After'];
     rows.forEach((t) => lines.push([
       new Date(t.date).toISOString(), esc(t.username), t.type, esc(t.title), t.amount,
+      t.balanceBefore ?? '', t.balanceAfter ?? '',
     ].join(',')));
     const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     const a = document.createElement('a'); a.href = url; a.download = 'transactions.csv'; a.click();
@@ -175,11 +182,11 @@ export default function AdminTransactions() {
           </div>
           {range === 'custom' && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#b1835a]" />
-              <span className="text-gray-400">to</span>
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#b1835a]" />
+              <DateRangePicker
+                from={from} to={to}
+                onChange={(f, t) => { setFrom(f); setTo(t); }}
+                placeholder="Pick date range"
+              />
             </div>
           )}
 
@@ -243,28 +250,30 @@ export default function AdminTransactions() {
           {/* Table */}
           <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(17,24,39,0.06)] border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
                     <th className="px-5 py-3.5 text-left font-semibold">Date (IST)</th>
                     <th className="px-5 py-3.5 text-left font-semibold">Username</th>
                     <th className="px-5 py-3.5 text-left font-semibold">Type</th>
+                    <th className="px-5 py-3.5 text-left font-semibold">Prev. Balance</th>
+                    <th className="px-5 py-3.5 text-left font-semibold">Amount</th>
+                    <th className="px-5 py-3.5 text-left font-semibold">New Balance</th>
                     <th className="px-5 py-3.5 text-left font-semibold">Detail</th>
-                    <th className="px-5 py-3.5 text-right font-semibold">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {loading ? (
                     [...Array(8)].map((_, i) => (
                       <tr key={i}>
-                        <td colSpan={5} className="px-5 py-3.5">
+                        <td colSpan={7} className="px-5 py-3.5">
                           <div className="h-4 bg-gray-100 rounded animate-pulse" />
                         </td>
                       </tr>
                     ))
                   ) : data.transactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-16 text-center">
+                      <td colSpan={7} className="py-16 text-center">
                         <ArrowLeftRight size={40} className="mx-auto text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No transactions found.</p>
                       </td>
@@ -272,25 +281,32 @@ export default function AdminTransactions() {
                   ) : (
                     data.transactions.map((t, i) => {
                       const positive = t.amount >= 0;
+                      const hasBal = t.balanceBefore != null;
                       return (
                         <tr key={i} className="hover:bg-gray-50/60">
                           <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{fmtDate(t.date)}</td>
-                          <td className="px-5 py-3.5 font-semibold text-gray-900 truncate max-w-[160px]">{t.username}</td>
+                          <td className="px-5 py-3.5 font-semibold text-gray-900 truncate max-w-[140px]">{t.username}</td>
                           <td className="px-5 py-3.5">
                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${TYPE_BADGE[t.type] || 'bg-gray-100 text-gray-600'}`}>
                               {t.type}
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 text-gray-500 max-w-[260px] text-sm">
-                            <span className="truncate block">
-                              {t.title}
-                              {t.admin && <span className="text-indigo-500 font-medium"> · {t.admin}</span>}
-                              {t.remark && t.type !== 'transfer' ? ` · ${t.remark}` : ''}
-                              {t.multiplier ? ` · ${t.multiplier}x` : ''}
-                            </span>
+                          <td className="px-5 py-3.5 text-left font-mono text-gray-400 whitespace-nowrap text-xs">
+                            {hasBal ? inr(t.balanceBefore) : <span className="text-gray-300">—</span>}
                           </td>
-                          <td className={`px-5 py-3.5 text-right font-mono font-semibold whitespace-nowrap ${positive ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          <td className={`px-5 py-3.5 text-left font-mono font-semibold whitespace-nowrap ${positive ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {positive ? '+' : ''}{inr(t.amount)}
+                          </td>
+                          <td className="px-5 py-3.5 text-left font-mono text-gray-800 font-semibold whitespace-nowrap text-xs">
+                            {hasBal ? inr(t.balanceAfter) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-5 py-3.5 max-w-[220px] text-sm">
+                            <span className="truncate block text-gray-500">
+                              <span className={TITLE_COLOR[t.type] || 'text-gray-700'}>{t.title}</span>
+                              {t.admin && <span className="text-indigo-500 font-medium"> · {t.admin}</span>}
+                              {t.remark && t.type !== 'transfer' ? <span className="text-gray-400"> · {t.remark}</span> : ''}
+                              {t.multiplier ? <span className="text-gray-400"> · {t.multiplier}x</span> : ''}
+                            </span>
                           </td>
                         </tr>
                       );

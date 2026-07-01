@@ -6,7 +6,7 @@ import AppModal, { ModalBtn, ModalInput, ModalTextarea } from '../components/App
 import {
   Megaphone, Plus, Search, Pencil, Trash2, X, RefreshCw,
   ChevronLeft, ChevronRight, Globe, User, AlertTriangle,
-  CheckCircle, Clock,
+  CheckCircle, Clock, RotateCcw,
 } from 'lucide-react';
 
 const BRAND = 'linear-gradient(90deg,#d9ad82,#b1835a)';
@@ -146,6 +146,23 @@ export default function Announcements() {
     } catch (error) {
       notify.error('Failed to delete announcement');
     } finally { setDeleting(false); }
+  };
+
+  const handleRevoke = async (ann) => {
+    const ok = await notify.confirm({
+      title: 'Revoke Message?',
+      message: `"${ann.title}" will be reset to unread. The user will see it again as a new message.`,
+      confirmLabel: 'Revoke',
+      variant: 'warning',
+    });
+    if (!ok) return;
+    try {
+      await axiosInstance.patch(`/announcements/${ann._id}/revoke`);
+      notify.success('Message revoked — reset to unread');
+      fetchAnnouncements(currentPage);
+    } catch (error) {
+      notify.error('Failed to revoke message');
+    }
   };
 
   const StatCard = ({ label, value, sub, accent = 'text-gray-900', icon: Icon, iconColor, iconBg }) => (
@@ -315,6 +332,16 @@ export default function Announcements() {
                             >
                               <Pencil size={16} />
                             </button>
+                            {ann.type === 'personal' && (
+                              <button
+                                onClick={() => handleRevoke(ann)}
+                                title={ann.isRead ? 'Revoke (reset to unread)' : 'Not read yet'}
+                                className={`p-2 rounded-lg transition ${ann.isRead ? 'text-amber-500 hover:bg-amber-50 hover:text-amber-700' : 'text-gray-300 cursor-not-allowed'}`}
+                                disabled={!ann.isRead}
+                              >
+                                <RotateCcw size={16} />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(ann)}
                               title="Delete"
@@ -371,6 +398,10 @@ export default function Announcements() {
                 value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
               <ModalTextarea label="Content *" required rows={4}
                 value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} />
+              {formData.type === 'personal' && (
+                <ModalInput label="Username (Exact) *" type="text" required placeholder="e.g. krishna"
+                  value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <ModalInput label="Display Date *" type="date" required
                   value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
@@ -384,10 +415,6 @@ export default function Announcements() {
                   </select>
                 </div>
               </div>
-              {formData.type === 'personal' && (
-                <ModalInput label="Username (Exact) *" type="text" required placeholder="e.g. krishna"
-                  value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
-              )}
               <div className="grid grid-cols-2 gap-3">
                 <ModalInput label="Start Date *" type="date" required
                   value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />

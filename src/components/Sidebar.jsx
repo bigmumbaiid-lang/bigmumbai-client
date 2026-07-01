@@ -8,13 +8,14 @@ import {
     ArrowLeftRight, Megaphone, Bomb, Spade, Shield,
     PanelLeftClose, PanelLeftOpen, LifeBuoy, LogOut,
     ChevronDown, Menu, X, Bitcoin, UserCog,
+    Info, SlidersHorizontal,
 } from 'lucide-react';
 
 const USER_SUBNAV = [
-    { key: 'information', label: 'Information'     },
-    { key: 'accounts',    label: 'Account Controls'},
-    { key: 'bank',        label: 'Bank Card'       },
-    { key: 'transfer',    label: 'Transfer'        },
+    { key: 'information', label: 'Information',      icon: Info               },
+    { key: 'accounts',    label: 'Account Controls', icon: SlidersHorizontal  },
+    { key: 'bank',        label: 'Bank Card',        icon: CreditCard         },
+    { key: 'transfer',    label: 'Transfer',         icon: ArrowLeftRight     },
 ];
 
 const buildNavGroups = (isSuperAdmin) => [
@@ -134,14 +135,14 @@ export default function Sidebar() {
                     fixed md:relative inset-y-0 left-0 z-[66]
                     transition-all duration-300 ease-out
                     ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-                    ${isCollapsed ? 'w-[68px]' : 'w-[220px]'}
+                    ${isCollapsed ? 'w-[68px]' : 'w-[230px]'}
                 `}
-                style={{ background: '#0f1117', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+                style={{ background: 'linear-gradient(180deg,#0c0f16 0%,#0e1119 100%)', borderRight: '1px solid rgba(255,255,255,0.05)' }}
             >
                 {/* Ambient glows */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                    <div className="absolute -top-24 -left-12 h-56 w-56 rounded-full bg-amber-500/[0.04] blur-3xl" />
-                    <div className="absolute bottom-20 -right-16 h-48 w-48 rounded-full bg-amber-600/[0.03] blur-3xl" />
+                    <div className="absolute -top-24 -left-12 h-64 w-64 rounded-full bg-amber-500/[0.05] blur-3xl" />
+                    <div className="absolute bottom-32 -right-16 h-56 w-56 rounded-full bg-amber-600/[0.03] blur-3xl" />
                 </div>
 
                 {/* ── Header ── */}
@@ -159,7 +160,6 @@ export default function Sidebar() {
                         </div>
                     )}
 
-                    {/* Desktop collapse toggle */}
                     <button
                         onClick={() => setIsCollapsed(v => !v)}
                         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -168,7 +168,6 @@ export default function Sidebar() {
                         {isCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
                     </button>
 
-                    {/* Mobile close */}
                     <button onClick={() => setIsMobileOpen(false)}
                         className="md:hidden grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.06] transition-all focus:outline-none">
                         <X size={15} />
@@ -201,9 +200,8 @@ export default function Sidebar() {
                 <nav className="relative flex-1 overflow-y-auto sidebar-scroll px-2.5 py-3 space-y-4">
                     {navGroups.map((group) => (
                         <div key={group.title}>
-                            {/* Group label */}
                             {!isCollapsed && (
-                                <p className="px-2 mb-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-700">
+                                <p className="px-2 mb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-700">
                                     {group.title}
                                 </p>
                             )}
@@ -237,18 +235,14 @@ export default function Sidebar() {
                                                     boxShadow: 'inset 0 0 0 1px rgba(217,173,130,0.12)',
                                                 } : {}}
                                             >
-                                                {/* Active bar */}
                                                 {isActive && (
                                                     <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
                                                         style={{ background: 'linear-gradient(180deg,#e2b97a,#b1835a)' }} />
                                                 )}
-
                                                 <Icon size={15} className={`shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-slate-600'}`} />
-
                                                 {!isCollapsed && (
                                                     <>
                                                         <span className="flex-1 truncate text-left">{label}</span>
-                                                        {/* Chevron for accordion items */}
                                                         {isUsers && (
                                                             <ChevronDown
                                                                 size={13}
@@ -259,26 +253,50 @@ export default function Sidebar() {
                                                 )}
                                             </button>
 
-                                            {/* Collapsible sub-nav */}
-                                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showSub ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                                <div className="ml-3.5 mt-0.5 pl-3 pb-1 space-y-0.5"
-                                                    style={{ borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
-                                                    {USER_SUBNAV.map(({ key, label: subLabel }) => {
+                                            {/* ── Users subnav ── */}
+                                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showSub ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                                <div className="mt-1 mb-1 mx-1 rounded-xl overflow-hidden"
+                                                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    {USER_SUBNAV.map(({ key, label: subLabel, icon: SubIcon }, idx) => {
                                                         const subActive = active === '/users' && activeSubTab === key;
+                                                        const isLast = idx === USER_SUBNAV.length - 1;
                                                         return (
                                                             <button
                                                                 key={key}
                                                                 onClick={() => handleNav(`/users?tab=${key}`)}
-                                                                className={`flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-[12px] font-medium transition-all duration-150 focus:outline-none ${
-                                                                    subActive
-                                                                        ? 'text-amber-300 bg-white/[0.06]'
-                                                                        : 'text-slate-600 hover:text-slate-200 hover:bg-white/[0.03]'
-                                                                }`}
+                                                                className={`
+                                                                    relative flex w-full items-center gap-2.5
+                                                                    px-3 py-2 text-[12px] font-medium
+                                                                    transition-all duration-150 focus:outline-none
+                                                                    ${!isLast ? 'border-b' : ''}
+                                                                    ${subActive
+                                                                        ? 'text-amber-300'
+                                                                        : 'text-slate-500 hover:text-slate-200'
+                                                                    }
+                                                                `}
+                                                                style={{
+                                                                    borderColor: 'rgba(255,255,255,0.04)',
+                                                                    background: subActive
+                                                                        ? 'linear-gradient(90deg,rgba(217,173,130,0.10),rgba(177,131,90,0.05))'
+                                                                        : 'transparent',
+                                                                }}
                                                             >
-                                                                <span className={`h-[5px] w-[5px] rounded-full shrink-0 transition-all ${
-                                                                    subActive ? 'bg-amber-400 shadow-[0_0_6px_#fbbf24]' : 'bg-slate-700'
-                                                                }`} />
-                                                                {subLabel}
+                                                                {subActive && (
+                                                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full"
+                                                                        style={{ background: 'linear-gradient(180deg,#e2b97a,#b1835a)' }} />
+                                                                )}
+                                                                <span className={`flex items-center justify-center h-5 w-5 rounded-md shrink-0 transition-all ${
+                                                                    subActive
+                                                                        ? 'bg-amber-400/20 text-amber-400'
+                                                                        : 'bg-white/[0.04] text-slate-600'
+                                                                }`}>
+                                                                    <SubIcon size={11} />
+                                                                </span>
+                                                                <span className="truncate">{subLabel}</span>
+                                                                {subActive && (
+                                                                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0"
+                                                                        style={{ boxShadow: '0 0 5px #fbbf24' }} />
+                                                                )}
                                                             </button>
                                                         );
                                                     })}

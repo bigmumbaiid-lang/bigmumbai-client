@@ -1,19 +1,16 @@
 ﻿import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import axios from '../utils/axios';
+import DateRangePicker from '../components/DateRangePicker';
 import {
   Spade, RefreshCw, Download, TrendingUp, Wallet,
   Users, BarChart3, ChevronLeft, ChevronRight, Search, Target,
 } from 'lucide-react';
 
 const RANGES = [
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
-  { value: 'last7', label: 'Last 7 Days' },
+  { value: 'today',  label: 'Today' },
+  { value: 'last7',  label: 'Last 7 Days' },
   { value: 'last30', label: 'Last 30 Days' },
-  { value: 'all', label: 'All Time' },
   { value: 'custom', label: 'Custom' },
 ];
 
@@ -167,11 +164,11 @@ export default function BlackJack() {
           </div>
           {range === 'custom' && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#b1835a]" />
-              <span className="text-gray-400">to</span>
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#b1835a]" />
+              <DateRangePicker
+                from={from} to={to}
+                onChange={(f, t) => { setFrom(f); setTo(t); }}
+                placeholder="Pick date range"
+              />
             </div>
           )}
 

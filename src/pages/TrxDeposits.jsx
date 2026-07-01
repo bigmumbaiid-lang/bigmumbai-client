@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import api from '../utils/axios';
+import DateRangePicker from '../components/DateRangePicker';
 import { useNotify } from '../context/NotifyContext';
 import AppModal, { ModalBtn } from '../components/AppModal';
 import {
@@ -38,27 +39,26 @@ const istStart = (d = new Date()) => {
     return new Date(x.getTime() - IST);
 };
 
+const BRAND = 'linear-gradient(90deg,#d9ad82,#b1835a)';
+
 const DATE_PRESETS = [
-    { key: 'all',   label: 'All Time' },
-    { key: 'today', label: 'Today' },
-    { key: 'week',  label: 'This Week' },
-    { key: 'month', label: 'This Month' },
-    { key: 'custom',label: 'Custom' },
+    { key: 'today',  label: 'Today' },
+    { key: 'last7',  label: 'Last 7 Days' },
+    { key: 'last30', label: 'Last 30 Days' },
+    { key: 'custom', label: 'Custom' },
 ];
 
 function getPresetRange(key) {
     const now = new Date();
     const today = istStart(now);
     if (key === 'today') return { from: today.toISOString(), to: now.toISOString() };
-    if (key === 'week') {
-        const s = new Date(today);
-        s.setDate(s.getDate() - ((s.getDay() + 6) % 7));
-        return { from: s.toISOString(), to: now.toISOString() };
+    if (key === 'last7') {
+        const s = new Date(now.getTime() - 6 * 86400000);
+        return { from: istStart(s).toISOString(), to: now.toISOString() };
     }
-    if (key === 'month') {
-        const ist = new Date(now.getTime() + IST);
-        const s = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - IST);
-        return { from: s.toISOString(), to: now.toISOString() };
+    if (key === 'last30') {
+        const s = new Date(now.getTime() - 29 * 86400000);
+        return { from: istStart(s).toISOString(), to: now.toISOString() };
     }
     return {};
 }
@@ -233,7 +233,7 @@ export default function TrxDeposits() {
     const [total, setTotal]               = useState(0);
     const [summary, setSummary]           = useState(null);
     const [filterStatus, setFilterStatus] = useState('');
-    const [datePreset, setDatePreset]     = useState('all');
+    const [datePreset, setDatePreset]     = useState('today');
     const [customFrom, setCustomFrom]     = useState('');
     const [customTo, setCustomTo]         = useState('');
     const [search, setSearch]             = useState('');
@@ -425,8 +425,8 @@ export default function TrxDeposits() {
                                 <button
                                     key={p.key}
                                     onClick={() => handlePreset(p.key)}
-                                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors border ${datePreset === p.key ? 'text-white border-transparent shadow-sm' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'}`}
-                                    style={datePreset === p.key ? { background: TRX_RED, borderColor: TRX_RED } : {}}
+                                    className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${datePreset === p.key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                    style={datePreset === p.key ? { background: BRAND } : undefined}
                                 >
                                     {p.label}
                                 </button>
@@ -475,17 +475,11 @@ export default function TrxDeposits() {
 
                     {/* Custom date range */}
                     {datePreset === 'custom' && (
-                        <div className="flex items-center gap-2 pt-1">
-                            <input
-                                type="date" value={customFrom} max={customTo || undefined}
-                                onChange={e => { setCustomFrom(e.target.value); setPage(1); }}
-                                className="text-xs bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-gray-700 focus:outline-none focus:border-gray-400"
-                            />
-                            <span className="text-gray-300 text-sm">→</span>
-                            <input
-                                type="date" value={customTo} min={customFrom || undefined}
-                                onChange={e => { setCustomTo(e.target.value); setPage(1); }}
-                                className="text-xs bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-gray-700 focus:outline-none focus:border-gray-400"
+                        <div className="pt-1">
+                            <DateRangePicker
+                                from={customFrom} to={customTo}
+                                onChange={(f, t) => { setCustomFrom(f); setCustomTo(t); setPage(1); }}
+                                placeholder="Pick date range"
                             />
                         </div>
                     )}

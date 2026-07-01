@@ -49,9 +49,8 @@ export default function ResetPasswordModal({ user, onClose }) {
                 type: resetType,
                 newPassword,
             });
-            notify.successDetail(
+            notify.success(
                 `${resetType === RESET_TYPE.LOGIN ? 'Login' : 'Payment'} password updated successfully!`,
-                `New password: ${data.newPassword}`,
                 'Password Reset'
             );
             onClose();

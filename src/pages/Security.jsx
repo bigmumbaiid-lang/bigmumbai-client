@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { securityApi } from '../api/security';
+import DateRangePicker from '../components/DateRangePicker';
 
 const BRAND = 'linear-gradient(90deg,#d9ad82,#b1835a)';
 
@@ -67,12 +68,12 @@ function getPresetDates(preset) {
     if (preset === 'today')
         return { dateFrom: todayStr, dateTo: todayStr };
 
-    if (preset === 'week') {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    if (preset === 'last7') {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
         return { dateFrom: localDateStr(start), dateTo: todayStr };
     }
-    if (preset === 'month') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (preset === 'last30') {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
         return { dateFrom: localDateStr(start), dateTo: todayStr };
     }
     return { dateFrom: '', dateTo: '' };
@@ -81,11 +82,10 @@ function getPresetDates(preset) {
 const DEVICE_OPTS  = ['all', 'Mobile', 'Tablet', 'Desktop'];
 const BROWSER_OPTS = ['all', 'Safari', 'Chrome', 'Firefox', 'Edge', 'Samsung', 'Opera'];
 const PRESET_OPTS  = [
-    { key: 'all',   label: 'All Time' },
-    { key: 'today', label: 'Today'    },
-    { key: 'week',  label: 'This Week' },
-    { key: 'month', label: 'This Month' },
-    { key: 'custom', label: 'Custom' },
+    { key: 'today',  label: 'Today'        },
+    { key: 'last7',  label: 'Last 7 Days'  },
+    { key: 'last30', label: 'Last 30 Days' },
+    { key: 'custom', label: 'Custom'       },
 ];
 
 // Export sessions to CSV
@@ -197,7 +197,7 @@ function LoginHistory({ onBlockIP }) {
     // Filter state
     const [search,      setSearch]      = useState('');
     const [inputVal,    setInputVal]    = useState('');
-    const [preset,      setPreset]      = useState('all');
+    const [preset,      setPreset]      = useState('today');
     const [dateFrom,    setDateFrom]    = useState('');
     const [dateTo,      setDateTo]      = useState('');
     const [deviceType,  setDeviceType]  = useState('all');
@@ -207,8 +207,7 @@ function LoginHistory({ onBlockIP }) {
     const LIMIT = 30;
 
     const activeFilterCount = [
-        search       ? 1 : 0,
-        preset !== 'all' ? 1 : 0,
+        search ? 1 : 0,
         deviceType !== 'all' ? 1 : 0,
         browser    !== 'all' ? 1 : 0,
     ].reduce((a, b) => a + b, 0);
@@ -241,7 +240,11 @@ function LoginHistory({ onBlockIP }) {
         }
     }, [page, search, dateFrom, dateTo, deviceType, browser]);
 
-    useEffect(() => { load({ page: 1 }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        const { dateFrom: df, dateTo: dt } = getPresetDates('today');
+        setDateFrom(df); setDateTo(dt);
+        load({ page: 1, dateFrom: df, dateTo: dt });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Handlers ──
 
@@ -278,10 +281,11 @@ function LoginHistory({ onBlockIP }) {
 
     const clearAll = () => {
         setInputVal(''); setSearch('');
-        setPreset('all'); setDateFrom(''); setDateTo('');
+        const { dateFrom: df, dateTo: dt } = getPresetDates('today');
+        setPreset('today'); setDateFrom(df); setDateTo(dt);
         setDeviceType('all'); setBrowser('all');
         setShowCustom(false); setPage(1);
-        load({ page: 1, search: '', dateFrom: '', dateTo: '', deviceType: 'all', browser: 'all' });
+        load({ page: 1, search: '', dateFrom: df, dateTo: dt, deviceType: 'all', browser: 'all' });
     };
 
     const handlePage = (p) => { setPage(p); load({ page: p }); };
@@ -325,35 +329,17 @@ function LoginHistory({ onBlockIP }) {
                     </div>
                 </div>
 
-                {/* Custom date pickers */}
+                {/* Custom date picker */}
                 {showCustom && (
-                    <div className="flex items-end gap-3 flex-wrap pt-1 border-t border-slate-100">
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs text-slate-500 font-medium">From</label>
-                            <input
-                                type="date"
-                                value={dateFrom}
-                                onChange={(e) => setDateFrom(e.target.value)}
-                                className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <label className="text-xs text-slate-500 font-medium">To</label>
-                            <input
-                                type="date"
-                                value={dateTo}
-                                onChange={(e) => setDateTo(e.target.value)}
-                                className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-                            />
-                        </div>
-                        <button
-                            onClick={applyCustom}
-                            disabled={!dateFrom && !dateTo}
-                            className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50"
-                            style={{ background: BRAND }}
-                        >
-                            Apply
-                        </button>
+                    <div className="pt-1 border-t border-slate-100">
+                        <DateRangePicker
+                            from={dateFrom} to={dateTo}
+                            onChange={(f, t) => {
+                                setDateFrom(f); setDateTo(t);
+                                if (f && t) { setPage(1); load({ page: 1, dateFrom: f, dateTo: t }); }
+                            }}
+                            placeholder="Pick date range"
+                        />
                     </div>
                 )}
 

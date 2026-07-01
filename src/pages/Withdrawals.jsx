@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar';
 import api from '../utils/axios';
 import { useNotify } from '../context/NotifyContext';
 import AppModal, { ModalBtn, ModalTextarea } from '../components/AppModal';
+import DateRangePicker from '../components/DateRangePicker';
 import {
   Search, X, CheckCircle, XCircle, Clock, RefreshCw, AlertTriangle,
   ChevronLeft, ChevronRight, Wallet, TrendingUp, Download,
@@ -33,7 +34,7 @@ export default function Withdrawals() {
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [quickFilter, setQuickFilter] = useState('');
+  const [quickFilter, setQuickFilter] = useState('today');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [actionLoading, setActionLoading] = useState(null);
@@ -43,6 +44,12 @@ export default function Withdrawals() {
 
   const limit = 20;
   const fmt = (d) => d.toISOString().split('T')[0];
+
+  // Set Today filter on mount
+  useEffect(() => {
+    const t = fmt(new Date()); setStartDate(t); setEndDate(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchWithdrawals = async () => {
     try {
@@ -93,24 +100,21 @@ export default function Withdrawals() {
     if (page > totalPages) setPage(totalPages || 1);
   }, [totalPages]); // eslint-disable-line
 
-  const setToday = () => { const t = fmt(new Date()); setStartDate(t); setEndDate(t); setQuickFilter('today'); setPage(1); };
-  const setThisWeek = () => {
-    const now = new Date();
-    const diff = now.getDay() === 0 ? -6 : 1 - now.getDay();
-    const mon = new Date(now); mon.setDate(now.getDate() + diff);
-    setStartDate(fmt(mon)); setEndDate(fmt(new Date())); setQuickFilter('week'); setPage(1);
-  };
-  const setThisMonth = () => {
-    const now = new Date();
-    setStartDate(fmt(new Date(now.getFullYear(), now.getMonth(), 1)));
-    setEndDate(fmt(new Date())); setQuickFilter('month'); setPage(1);
-  };
-  const clearDateFilter = () => { setStartDate(''); setEndDate(''); setQuickFilter(''); setPage(1); };
+  const setToday  = () => { const t = fmt(new Date()); setStartDate(t); setEndDate(t); setQuickFilter('today'); setPage(1); };
+  const setLast7  = () => { const n = new Date(); setStartDate(fmt(new Date(n - 6*86400000))); setEndDate(fmt(n)); setQuickFilter('last7'); setPage(1); };
+  const setLast30 = () => { const n = new Date(); setStartDate(fmt(new Date(n - 29*86400000))); setEndDate(fmt(n)); setQuickFilter('last30'); setPage(1); };
   const resetFilters = () => {
     setSearchInput(''); setSearch(''); setFilterStatus('');
     setStartDate(''); setEndDate(''); setQuickFilter('');
     setMinAmount(''); setMaxAmount(''); setPage(1);
   };
+
+  const quickButtons = [
+    { label: 'Today',        key: 'today',  fn: setToday  },
+    { label: 'Last 7 Days',  key: 'last7',  fn: setLast7  },
+    { label: 'Last 30 Days', key: 'last30', fn: setLast30 },
+    { label: 'Custom',       key: 'custom', fn: () => setQuickFilter('custom') },
+  ];
 
   const exportCsv = () => {
     if (!withdrawals.length) return;
@@ -252,28 +256,21 @@ export default function Withdrawals() {
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-              {[['today', 'Today', setToday], ['week', 'This Week', setThisWeek], ['month', 'This Month', setThisMonth]].map(([key, label, fn]) => (
+              {quickButtons.map((btn) => (
                 <button
-                  key={key} onClick={fn}
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${quickFilter === key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                  style={quickFilter === key ? { background: BRAND } : undefined}
+                  key={btn.key} onClick={btn.fn}
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${quickFilter === btn.key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  style={quickFilter === btn.key ? { background: BRAND } : undefined}
                 >
-                  {label}
+                  {btn.label}
                 </button>
               ))}
-              <div className="flex items-center gap-2 ml-1">
-                <input type="date" value={startDate}
-                  onChange={(e) => { setStartDate(e.target.value); setQuickFilter('custom'); setPage(1); }}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]" />
-                <span className="text-gray-400 text-sm">to</span>
-                <input type="date" value={endDate}
-                  onChange={(e) => { setEndDate(e.target.value); setQuickFilter('custom'); setPage(1); }}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]" />
-              </div>
-              {(startDate || endDate) && (
-                <button onClick={clearDateFilter} className="text-sm text-gray-400 hover:text-gray-600 px-2">
-                  Clear dates
-                </button>
+              {quickFilter === 'custom' && (
+                <DateRangePicker
+                  from={startDate} to={endDate}
+                  onChange={(f, t) => { setStartDate(f); setEndDate(t); setPage(1); }}
+                  placeholder="Pick date range"
+                />
               )}
             </div>
           </div>

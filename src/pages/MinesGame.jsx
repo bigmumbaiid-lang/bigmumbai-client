@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import axios from '../utils/axios';
+import DateRangePicker from '../components/DateRangePicker';
 import {
   Bomb, Search, RefreshCw, Download, TrendingUp, Wallet,
   ChevronLeft, ChevronRight, X, Target, BarChart3,
@@ -31,9 +32,14 @@ const emptyFilters = {
   minesCount: '', minMultiplier: '', maxMultiplier: '',
 };
 
+const fmt = (d) => d.toISOString().split('T')[0];
+const todayStr = fmt(new Date());
+const todayFilters = { ...emptyFilters, from: todayStr, to: todayStr };
+
 export default function MinesGame() {
-  const [filters, setFilters] = useState(emptyFilters);
-  const [applied, setApplied] = useState(emptyFilters);
+  const [filters, setFilters] = useState(todayFilters);
+  const [applied, setApplied] = useState(todayFilters);
+  const [quickFilter, setQuickFilter] = useState('today');
   const [stats, setStats] = useState(null);
   const [games, setGames] = useState([]);
   const [page, setPage] = useState(1);
@@ -78,8 +84,25 @@ export default function MinesGame() {
 
   const handleChange = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
   const applyFilters = () => setApplied(filters);
-  const resetFilters = () => { setFilters(emptyFilters); setApplied(emptyFilters); };
+  const resetFilters = () => { setFilters(emptyFilters); setApplied(emptyFilters); setQuickFilter(''); };
   const goToPage = (p) => { if (p < 1 || p > totalPages) return; fetchGames(applied, p); };
+
+  const applyDatePreset = (from, to, key) => {
+    const updated = { ...filters, from, to };
+    setFilters(updated);
+    setApplied(updated);
+    setQuickFilter(key);
+  };
+  const setToday  = () => { const t = fmt(new Date()); applyDatePreset(t, t, 'today'); };
+  const setLast7  = () => { const n = new Date(); applyDatePreset(fmt(new Date(n-6*86400000)), fmt(n), 'last7'); };
+  const setLast30 = () => { const n = new Date(); applyDatePreset(fmt(new Date(n-29*86400000)), fmt(n), 'last30'); };
+
+  const quickButtons = [
+    { label: 'Today',        key: 'today',  fn: setToday  },
+    { label: 'Last 7 Days',  key: 'last7',  fn: setLast7  },
+    { label: 'Last 30 Days', key: 'last30', fn: setLast30 },
+    { label: 'Custom',       key: 'custom', fn: () => setQuickFilter('custom') },
+  ];
 
   const exportCsv = () => {
     if (!games.length) return;
@@ -172,6 +195,25 @@ export default function MinesGame() {
 
           {/* Filters */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(17,24,39,0.06)] p-4 mb-6">
+            {/* Date preset buttons */}
+            <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+              {quickButtons.map((btn) => (
+                <button
+                  key={btn.key} onClick={btn.fn}
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${quickFilter === btn.key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  style={quickFilter === btn.key ? { background: BRAND } : undefined}
+                >
+                  {btn.label}
+                </button>
+              ))}
+              {quickFilter === 'custom' && (
+                <DateRangePicker
+                  from={filters.from} to={filters.to}
+                  onChange={(f, t) => setFilters(prev => ({ ...prev, from: f, to: t }))}
+                  placeholder="Pick date range"
+                />
+              )}
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs text-gray-500 font-medium mb-1.5">Status</label>
@@ -194,22 +236,6 @@ export default function MinesGame() {
                     className="w-full pl-8 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#b1835a] focus:ring-2 focus:ring-[#d8ab83]/25"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 font-medium mb-1.5">From Date</label>
-                <input
-                  type="date" value={filters.from}
-                  onChange={(e) => handleChange('from', e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#b1835a]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 font-medium mb-1.5">To Date</label>
-                <input
-                  type="date" value={filters.to}
-                  onChange={(e) => handleChange('to', e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#b1835a]"
-                />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 font-medium mb-1.5">Min Bet (₹)</label>

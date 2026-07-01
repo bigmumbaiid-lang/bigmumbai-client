@@ -1,5 +1,6 @@
 ﻿import Sidebar from '../components/Sidebar';
 import { useState, useEffect, useCallback } from 'react';
+import DateRangePicker from '../components/DateRangePicker';
 import axios from '../utils/axios';
 import {
   Users,
@@ -16,8 +17,8 @@ import {
 
 const PRESETS = [
   { key: 'today', label: 'Today' },
-  { key: 'week', label: 'This Week' },
-  { key: 'month', label: 'This Month' },
+  { key: 'last7', label: 'Last 7 Days' },
+  { key: 'last30', label: 'Last 30 Days' },
   { key: 'custom', label: 'Custom' },
 ];
 
@@ -119,46 +120,26 @@ function Dashboard() {
             <p className="text-xs text-gray-400 mt-0.5">Overview of platform activity</p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex bg-gray-100 rounded-xl p-1">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => setPreset(p.key)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                    preset === p.key ? 'bg-white text-[#b1835a] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
+          <div className="flex items-center gap-2 flex-wrap">
+            {PRESETS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPreset(p.key)}
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${preset === p.key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                style={preset === p.key ? { background: 'linear-gradient(90deg,#d9ad82,#b1835a)' } : undefined}
+              >
+                {p.label}
+              </button>
+            ))}
             {preset === 'custom' && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={custom.startDate}
-                  max={custom.endDate}
-                  onChange={(e) => setCustom((c) => ({ ...c, startDate: e.target.value }))}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#b1835a]"
-                />
-                <span className="text-gray-300">→</span>
-                <input
-                  type="date"
-                  value={custom.endDate}
-                  min={custom.startDate}
-                  onChange={(e) => setCustom((c) => ({ ...c, endDate: e.target.value }))}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#b1835a]"
-                />
-                <button
-                  onClick={fetchStats}
-                  className="text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm active:scale-95 transition-transform"
-                  style={{ background: 'linear-gradient(90deg,#d9ad82,#b1835a)' }}
-                >
-                  Apply
-                </button>
-              </div>
+              <DateRangePicker
+                from={custom.startDate} to={custom.endDate}
+                onChange={(f, t) => {
+                  setCustom({ startDate: f, endDate: t });
+                  if (f && t) fetchStats();
+                }}
+                placeholder="Pick date range"
+              />
             )}
           </div>
         </div>

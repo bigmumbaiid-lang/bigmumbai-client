@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import api from '../utils/axios';
+import DateRangePicker from '../components/DateRangePicker';
 import {
     Search, RefreshCw, Download, ChevronLeft, ChevronRight,
     TrendingUp, Clock, CheckCircle, Coins, X,
@@ -26,21 +27,16 @@ function getISTDate(offsetDays = 0) {
 }
 
 const DATE_PRESETS = [
-    { key: 'all',    label: 'All Time' },
     { key: 'today',  label: 'Today' },
-    { key: 'week',   label: 'This Week' },
-    { key: 'month',  label: 'This Month' },
+    { key: 'last7',  label: 'Last 7 Days' },
+    { key: 'last30', label: 'Last 30 Days' },
+    { key: 'custom', label: 'Custom' },
 ];
 
 function getPresetRange(key) {
     if (key === 'today')  return { from: getISTDate(0),   to: getISTDate(0) };
-    if (key === 'week')   return { from: getISTDate(-6),  to: getISTDate(0) };
-    if (key === 'month') {
-        const now = new Date(Date.now() + 330 * 60 * 1000);
-        const first = new Date(now.getFullYear(), now.getMonth(), 1);
-        const firstStr = first.toISOString().split('T')[0];
-        return { from: firstStr, to: getISTDate(0) };
-    }
+    if (key === 'last7')  return { from: getISTDate(-6),  to: getISTDate(0) };
+    if (key === 'last30') return { from: getISTDate(-29), to: getISTDate(0) };
     return { from: '', to: '' };
 }
 
@@ -68,9 +64,9 @@ export default function CryptoPayments() {
     const [page, setPage]         = useState(1);
     const limit = 20;
 
-    const [datePreset,     setDatePreset]     = useState('all');
-    const [fromDate,       setFromDate]       = useState('');
-    const [toDate,         setToDate]         = useState('');
+    const [datePreset,     setDatePreset]     = useState('today');
+    const [fromDate,       setFromDate]       = useState(() => getISTDate(0));
+    const [toDate,         setToDate]         = useState(() => getISTDate(0));
     const [statusFilter,   setStatusFilter]   = useState('');
     const [usernameSearch, setUsernameSearch] = useState('');
     const [addressSearch,  setAddressSearch]  = useState('');
@@ -117,7 +113,7 @@ export default function CryptoPayments() {
 
     const resetFilters = () => {
         setStatusFilter(''); setUsernameSearch(''); setAddressSearch('');
-        setFromDate(''); setToDate(''); setDatePreset('all'); setPage(1);
+        applyPreset('today');
     };
 
     const exportCSV = () => {
@@ -239,19 +235,13 @@ export default function CryptoPayments() {
                                     {label}
                                 </button>
                             ))}
-                            <div className="flex items-center gap-2 ml-1">
-                                <input
-                                    type="date" value={fromDate}
-                                    onChange={(e) => { setFromDate(e.target.value); setDatePreset('custom'); setPage(1); }}
-                                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]"
+                            {datePreset === 'custom' && (
+                                <DateRangePicker
+                                    from={fromDate} to={toDate}
+                                    onChange={(f, t) => { setFromDate(f); setToDate(t); setPage(1); }}
+                                    placeholder="Pick date range"
                                 />
-                                <span className="text-gray-400 text-sm">to</span>
-                                <input
-                                    type="date" value={toDate}
-                                    onChange={(e) => { setToDate(e.target.value); setDatePreset('custom'); setPage(1); }}
-                                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]"
-                                />
-                            </div>
+                            )}
                             <select
                                 value={statusFilter}
                                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
