@@ -10,7 +10,9 @@ import Sidebar from '../components/Sidebar';
 import { securityApi } from '../api/security';
 import DateRangePicker from '../components/DateRangePicker';
 
-const BRAND = 'linear-gradient(90deg,#d9ad82,#b1835a)';
+const G     = '#3a7d44';
+const GL    = '#e8f5ea';
+const BRAND = G;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -37,7 +39,7 @@ function Badge({ children, color = 'slate' }) {
         violet: 'bg-violet-50 text-violet-700',
     };
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${map[color] ?? map.slate}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 text-[11px] font-medium ${map[color] ?? map.slate}`}>
             {children}
         </span>
     );
@@ -113,21 +115,21 @@ function exportCSV(sessions) {
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, color = 'amber', sub }) {
+function StatCard({ icon: Icon, label, value, color = 'green', sub }) {
     const colors = {
-        amber:  { bg: 'bg-amber-50',   icon: 'text-amber-600',   ring: 'bg-amber-100' },
-        blue:   { bg: 'bg-blue-50',    icon: 'text-blue-600',    ring: 'bg-blue-100'  },
-        violet: { bg: 'bg-violet-50',  icon: 'text-violet-600',  ring: 'bg-violet-100' },
-        emerald:{ bg: 'bg-emerald-50', icon: 'text-emerald-600', ring: 'bg-emerald-100' },
+        green:  { bg: GL,          icon: G,         ring: '#c8e6c9' },
+        blue:   { bg: '#eff6ff',   icon: '#2563eb', ring: '#dbeafe' },
+        violet: { bg: '#f5f3ff',   icon: '#7c3aed', ring: '#ede9fe' },
+        emerald:{ bg: '#ecfdf5',   icon: '#059669', ring: '#d1fae5' },
     };
-    const c = colors[color];
+    const c = colors[color] || colors.green;
     return (
-        <div className={`${c.bg} rounded-xl p-4 flex items-center gap-3`}>
-            <div className={`${c.ring} rounded-xl p-2.5`}>
-                <Icon size={18} className={c.icon} />
+        <div className="border border-gray-200 p-3 md:p-4 flex items-center gap-3" style={{ background: c.bg }}>
+            <div className="p-2.5 shrink-0" style={{ background: c.ring }}>
+                <Icon size={18} style={{ color: c.icon }} />
             </div>
             <div>
-                <p className="text-xl font-bold text-slate-800 leading-none">{value}</p>
+                <p className="text-lg md:text-xl font-bold text-slate-800 leading-none">{value}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{label}</p>
                 {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
             </div>
@@ -151,27 +153,27 @@ function BrowserSelect({ value, onChange }) {
         <div ref={ref} className="relative">
             <button
                 onClick={() => setOpen((v) => !v)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg transition whitespace-nowrap ${
-                    value !== 'all'
-                        ? 'border-amber-400 bg-amber-50 text-amber-700 font-medium'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border transition whitespace-nowrap"
+                style={value !== 'all'
+                    ? { borderColor: G, background: GL, color: G }
+                    : { borderColor: '#d1d5db', background: '#fff', color: '#374151' }}
             >
                 <Wifi size={13} />
                 {value === 'all' ? 'Browser' : value}
                 <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-                <div className="absolute top-full mt-1 left-0 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[130px]">
+                <div className="absolute top-full mt-1 left-0 z-20 bg-white border border-gray-200 shadow-lg py-1 min-w-[130px]">
                     {BROWSER_OPTS.map((b) => (
                         <button
                             key={b}
                             onClick={() => { onChange(b); setOpen(false); }}
-                            className={`w-full text-left px-4 py-2 text-sm transition ${
-                                value === b
-                                    ? 'bg-amber-50 text-amber-700 font-medium'
-                                    : 'text-slate-700 hover:bg-slate-50'
-                            }`}
+                            className="w-full text-left px-4 py-2 text-sm transition"
+                            style={value === b
+                                ? { background: GL, color: G, fontWeight: 600 }
+                                : { color: '#374151' }}
+                            onMouseEnter={e => { if (value !== b) e.currentTarget.style.background = '#f9fafb'; }}
+                            onMouseLeave={e => { if (value !== b) e.currentTarget.style.background = ''; }}
                         >
                             {b === 'all' ? 'All Browsers' : b}
                         </button>
@@ -298,30 +300,28 @@ function LoginHistory({ onBlockIP }) {
         <div className="space-y-4">
 
             {/* ── Stats row ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <StatCard icon={Users}      label="Total Sessions"  value={stats.total.toLocaleString()}    color="amber"   />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                <StatCard icon={Users}      label="Total Sessions"  value={stats.total.toLocaleString()}    color="green"   />
                 <StatCard icon={Wifi}       label="Unique IPs"      value={stats.uniqueIPs.toLocaleString()} color="blue"   />
                 <StatCard icon={Smartphone} label="Mobile"          value={`${mobilePct}%`}                  color="violet" sub="of visible sessions" />
                 <StatCard icon={LayoutGrid} label="This Page"       value={sessions.length}                  color="emerald" sub={`of ${stats.total} total`} />
             </div>
 
             {/* ── Date preset chips ── */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <div className="bg-white border border-gray-200 p-4 space-y-3">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
                         <Calendar size={12} /> Date Range
                     </span>
-                    <div className="flex gap-1.5 flex-wrap">
+                    <div className="flex gap-1.5 shrink-0">
                         {PRESET_OPTS.map(({ key, label }) => (
                             <button
                                 key={key}
                                 onClick={() => applyPreset(key)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                                    preset === key
-                                        ? 'text-white shadow-sm'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                }`}
-                                style={preset === key ? { background: BRAND } : {}}
+                                className="px-3 py-1.5 text-xs font-semibold border transition whitespace-nowrap"
+                                style={preset === key
+                                    ? { background: G, borderColor: G, color: '#fff' }
+                                    : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }}
                             >
                                 {label}
                             </button>
@@ -331,7 +331,7 @@ function LoginHistory({ onBlockIP }) {
 
                 {/* Custom date picker */}
                 {showCustom && (
-                    <div className="pt-1 border-t border-slate-100">
+                    <div className="pt-1 border-t border-gray-100">
                         <DateRangePicker
                             from={dateFrom} to={dateTo}
                             onChange={(f, t) => {
@@ -343,24 +343,22 @@ function LoginHistory({ onBlockIP }) {
                     </div>
                 )}
 
-                {/* Device type + Browser row */}
-                <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-slate-100">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                {/* Device type row — scrollable (no dropdowns) */}
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1 border-t border-gray-100">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
                         <Filter size={12} /> Filters
                     </span>
 
                     {/* Device chips */}
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1.5 shrink-0">
                         {DEVICE_OPTS.map((d) => (
                             <button
                                 key={d}
                                 onClick={() => applyDevice(d)}
-                                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                                    deviceType === d
-                                        ? 'text-white shadow-sm'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                }`}
-                                style={deviceType === d ? { background: BRAND } : {}}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold border transition whitespace-nowrap"
+                                style={deviceType === d
+                                    ? { background: G, borderColor: G, color: '#fff' }
+                                    : { background: '#f3f4f6', borderColor: '#d1d5db', color: '#374151' }}
                             >
                                 {d === 'Mobile'  && <Smartphone size={11} />}
                                 {d === 'Tablet'  && <Tablet     size={11} />}
@@ -369,42 +367,42 @@ function LoginHistory({ onBlockIP }) {
                             </button>
                         ))}
                     </div>
+                </div>
 
-                    {/* Browser dropdown */}
+                {/* Browser + Clear — separate row so dropdown isn't clipped */}
+                <div className="flex items-center gap-2 flex-wrap">
                     <BrowserSelect value={browser} onChange={applyBrowser} />
 
-                    {/* Clear all */}
                     {activeFilterCount > 0 && (
                         <button
                             onClick={clearAll}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 transition ml-auto"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition ml-auto"
                         >
                             <X size={11} />
-                            Clear filters
-                            <span className="ml-0.5 bg-rose-200 text-rose-700 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
-                                {activeFilterCount}
-                            </span>
+                            Clear ({activeFilterCount})
                         </button>
                     )}
                 </div>
             </div>
 
             {/* ── Search + actions row ── */}
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <form onSubmit={applySearch} className="flex gap-2 flex-1 min-w-0">
-                    <div className="relative flex-1 min-w-0 max-w-xs">
+                    <div className="relative flex-1 min-w-0">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             value={inputVal}
                             onChange={(e) => setInputVal(e.target.value)}
                             placeholder="Search username or IP…"
-                            className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/20"
                         />
                     </div>
                     <button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium text-white rounded-lg"
-                        style={{ background: BRAND }}
+                        className="px-4 py-2 text-sm font-semibold text-white transition"
+                        style={{ background: G }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#2e6437'}
+                        onMouseLeave={e => e.currentTarget.style.background = G}
                     >
                         Search
                     </button>
@@ -415,13 +413,13 @@ function LoginHistory({ onBlockIP }) {
                         onClick={() => exportCSV(sessions)}
                         disabled={!sessions.length}
                         title="Export current page to CSV"
-                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition"
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-40 transition"
                     >
                         <Download size={13} /> Export
                     </button>
                     <button
                         onClick={() => load({ page: 1 })}
-                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50"
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 border border-gray-300 hover:bg-gray-50"
                     >
                         <RefreshCw size={13} /> Refresh
                     </button>
@@ -429,13 +427,13 @@ function LoginHistory({ onBlockIP }) {
             </div>
 
             {/* ── Table ── */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="overflow-hidden border border-gray-200 bg-white">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
+                        <thead>
+                            <tr className="border-b border-gray-200" style={{ background: GL }}>
                                 {['Username', 'IP Address', 'Device', 'OS / Browser', 'Login Time', 'Action'].map((h) => (
-                                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: G }}>
                                         {h}
                                     </th>
                                 ))}
@@ -466,17 +464,17 @@ function LoginHistory({ onBlockIP }) {
                                     </td>
                                 </tr>
                             ) : sessions.map((s) => (
-                                <tr key={s._id} className="hover:bg-slate-50/60 transition-colors group">
-                                    <td className="px-4 py-3 font-semibold text-slate-800">
+                                <tr key={s._id} className="hover:bg-[#f6fbf6] transition-colors group">
+                                    <td className="px-4 py-3 font-semibold text-gray-800">
                                         {s.username}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className="font-mono text-slate-600 text-xs bg-slate-100 px-2 py-0.5 rounded">
+                                        <span className="font-mono text-gray-600 text-xs bg-gray-100 px-2 py-0.5">
                                             {s.ipAddress}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center gap-1.5 text-slate-600">
+                                        <div className="flex items-center gap-1.5 text-gray-600">
                                             <DeviceIcon type={s.device?.type} />
                                             <span className="text-xs">
                                                 {s.device?.type || 'Unknown'}
@@ -490,16 +488,16 @@ function LoginHistory({ onBlockIP }) {
                                             <Badge color="slate">{s.device?.browser || 'Unknown'}</Badge>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                                         <div className="flex items-center gap-1">
-                                            <Clock size={11} className="text-slate-400" />
+                                            <Clock size={11} className="text-gray-400" />
                                             {fmtDate(s.loginAt)}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3">
                                         <button
                                             onClick={() => onBlockIP(s.ipAddress)}
-                                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                                         >
                                             <Ban size={12} /> Block IP
                                         </button>
@@ -511,8 +509,8 @@ function LoginHistory({ onBlockIP }) {
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50">
-                    <span className="text-xs text-slate-500">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                    <span className="text-xs text-gray-500">
                         {stats.total > 0
                             ? `Showing ${((page - 1) * LIMIT) + 1}–${Math.min(page * LIMIT, stats.total)} of ${stats.total} sessions`
                             : 'No sessions'}
@@ -522,11 +520,10 @@ function LoginHistory({ onBlockIP }) {
                             <button
                                 onClick={() => handlePage(page - 1)}
                                 disabled={page <= 1}
-                                className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="px-3 py-1.5 border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
                             >
                                 <ChevronLeft size={14} />
                             </button>
-                            {/* Page number pills */}
                             {Array.from({ length: pagination.pages }, (_, i) => i + 1)
                                 .filter((p) => p === 1 || p === pagination.pages || Math.abs(p - page) <= 1)
                                 .reduce((acc, p, i, arr) => {
@@ -536,17 +533,15 @@ function LoginHistory({ onBlockIP }) {
                                 }, [])
                                 .map((p, i) =>
                                     p === '…'
-                                        ? <span key={`dots-${i}`} className="px-1 text-slate-400 text-xs">…</span>
+                                        ? <span key={`dots-${i}`} className="px-1 text-gray-400 text-xs">…</span>
                                         : (
                                             <button
                                                 key={p}
                                                 onClick={() => handlePage(p)}
-                                                className={`w-7 h-7 rounded text-xs font-medium transition ${
-                                                    p === page
-                                                        ? 'text-white shadow-sm'
-                                                        : 'text-slate-600 hover:bg-slate-200'
-                                                }`}
-                                                style={p === page ? { background: BRAND } : {}}
+                                                className="px-3 py-1.5 text-xs font-semibold border transition"
+                                                style={p === page
+                                                    ? { background: G, borderColor: G, color: '#fff' }
+                                                    : { borderColor: '#d1d5db', color: '#374151' }}
                                             >
                                                 {p}
                                             </button>
@@ -556,7 +551,7 @@ function LoginHistory({ onBlockIP }) {
                             <button
                                 onClick={() => handlePage(page + 1)}
                                 disabled={page >= pagination.pages}
-                                className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="px-3 py-1.5 border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
                             >
                                 <ChevronRight size={14} />
                             </button>
@@ -637,34 +632,34 @@ function BlockedIPs({ pendingIP, onClearPending }) {
     return (
         <div className="space-y-6">
             {/* Add IP form */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <div className="bg-white border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                     <Ban size={15} className="text-red-500" /> Block an IP address
                 </h3>
                 <form onSubmit={handleBlock} className="flex flex-wrap gap-3 items-end">
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs text-slate-500 font-medium">IP Address</label>
+                        <label className="text-xs text-gray-500 font-medium">IP Address</label>
                         <input
                             value={ipInput}
                             onChange={(e) => setIpInput(e.target.value)}
                             placeholder="e.g. 192.168.1.1"
                             required
-                            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400/40 w-48 font-mono"
+                            className="px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/20 w-48 font-mono"
                         />
                     </div>
                     <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
-                        <label className="text-xs text-slate-500 font-medium">Reason (optional)</label>
+                        <label className="text-xs text-gray-500 font-medium">Reason (optional)</label>
                         <input
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             placeholder="e.g. Fraudulent activity"
-                            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400/40"
+                            className="px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/20"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={adding}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-60 transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 transition-colors"
                     >
                         <Plus size={14} /> {adding ? 'Blocking…' : 'Block IP'}
                     </button>
@@ -672,27 +667,26 @@ function BlockedIPs({ pendingIP, onClearPending }) {
             </div>
 
             {/* Blocked list */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 gap-3 flex-wrap">
-                    <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                        <Globe size={14} className="text-slate-500" />
+            <div className="overflow-hidden border border-gray-200 bg-white">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 gap-3 flex-wrap">
+                    <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <Globe size={14} className="text-gray-500" />
                         Blocked IPs
-                        <span className="ml-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                        <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium">
                             {blocked.length}
                         </span>
                     </h3>
                     <div className="flex items-center gap-2">
-                        {/* Inline search for blocked list */}
                         <div className="relative">
-                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Filter IP or reason…"
-                                className="pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/30 w-44"
+                                className="pl-7 pr-3 py-1.5 text-xs border border-gray-200 focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/20 w-44"
                             />
                         </div>
-                        <button onClick={load} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700">
+                        <button onClick={load} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2.5 py-1.5">
                             <RefreshCw size={12} /> Refresh
                         </button>
                     </div>
@@ -700,10 +694,10 @@ function BlockedIPs({ pendingIP, onClearPending }) {
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
+                        <thead>
+                            <tr className="border-b border-gray-200" style={{ background: GL }}>
                                 {['IP Address', 'Reason', 'Blocked At', 'Action'].map((h) => (
-                                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: G }}>
                                         {h}
                                     </th>
                                 ))}
@@ -721,25 +715,25 @@ function BlockedIPs({ pendingIP, onClearPending }) {
                                     </td>
                                 </tr>
                             ) : filtered.map((b) => (
-                                <tr key={b._id} className="hover:bg-red-50/30 transition-colors group">
+                                <tr key={b._id} className="hover:bg-red-50/20 transition-colors group">
                                     <td className="px-4 py-3">
-                                        <span className="font-mono text-sm font-medium text-slate-800 bg-red-50 border border-red-100 px-2 py-0.5 rounded">
+                                        <span className="font-mono text-sm font-medium text-gray-800 bg-red-50 border border-red-200 px-2 py-0.5">
                                             {b.ip}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500 text-xs max-w-xs truncate">
-                                        {b.reason || <span className="text-slate-300 italic">No reason</span>}
+                                    <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">
+                                        {b.reason || <span className="text-gray-300 italic">No reason</span>}
                                     </td>
-                                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                                         <div className="flex items-center gap-1">
-                                            <Clock size={11} className="text-slate-400" />
+                                            <Clock size={11} className="text-gray-400" />
                                             {fmtDate(b.blockedAt)}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3">
                                         <button
                                             onClick={() => handleUnblock(b.ip)}
-                                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
                                         >
                                             <Trash2 size={12} /> Unblock
                                         </button>
@@ -768,30 +762,30 @@ export default function Security() {
     };
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden">
+        <div className="flex h-screen overflow-hidden" style={{ background: '#f4f7f4' }}>
             <Sidebar />
 
             <main className="flex-1 flex flex-col overflow-hidden">
                 {/* Header */}
-                <header className="bg-white border-b border-slate-200 pl-14 pr-4 md:px-8 py-5 flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl flex items-center justify-center" style={{ background: BRAND }}>
+                <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 md:py-5 flex items-center gap-3 md:sticky md:top-0 z-10">
+                    <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: BRAND }}>
                         <Shield size={18} className="text-white" />
                     </div>
                     <div>
                         <h1 className="text-xl font-bold text-slate-900">Security</h1>
-                        <p className="text-xs text-slate-500">Monitor login activity and manage IP access control</p>
+                        <p className="text-xs text-slate-500 hidden md:block">Monitor login activity and manage IP access control</p>
                     </div>
                 </header>
 
                 {/* Tab bar */}
-                <div className="bg-white border-b border-slate-200 px-8">
-                    <nav className="flex gap-0">
+                <div className="bg-white border-b border-gray-200 px-4 md:px-8 overflow-x-auto scrollbar-none">
+                    <nav className="flex gap-0 min-w-max">
                         {TABS.map((tab, i) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(i)}
-                                className={`relative px-5 py-3.5 text-sm font-medium transition-colors focus:outline-none ${
-                                    activeTab === i ? 'text-amber-700' : 'text-slate-500 hover:text-slate-700'
+                                className={`relative px-5 py-3.5 text-sm font-medium transition-colors focus:outline-none whitespace-nowrap ${
+                                    activeTab === i ? 'text-[#3a7d44] font-semibold' : 'text-gray-500 hover:text-gray-700'
                                 }`}
                             >
                                 {tab}
@@ -804,7 +798,7 @@ export default function Security() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                     {activeTab === 0 && <LoginHistory onBlockIP={handleBlockFromHistory} />}
                     {activeTab === 1 && <BlockedIPs pendingIP={pendingIP} onClearPending={() => setPendingIP('')} />}
                 </div>

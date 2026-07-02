@@ -1,21 +1,20 @@
-﻿import { useNotify } from '../../context/NotifyContext';
+import { useNotify } from '../../context/NotifyContext';
 import { copyToClipboard } from '../../utils/clipboard';
 import { formatDate } from '../../utils/format';
+
+const G  = '#3a7d44';
+const GL = '#e8f5ea';
 
 function formatPhone(raw) {
   if (!raw) return '-';
   const digits = String(raw).replace(/\D/g, '');
   const local =
-    digits.length === 12 && digits.startsWith('91')
-      ? digits.slice(2)
-      : digits.length === 11 && digits.startsWith('0')
-        ? digits.slice(1)
-        : digits;
+    digits.length === 12 && digits.startsWith('91') ? digits.slice(2)
+    : digits.length === 11 && digits.startsWith('0') ? digits.slice(1)
+    : digits;
   if (local.length === 10) return `+91 ${local.slice(0, 5)} ${local.slice(5)}`;
   return `${raw} (invalid)`;
 }
-
-// ── small reusable pieces ──────────────────────────────────────────────────
 
 const Spinner = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4 animate-spin text-gray-400" fill="none">
@@ -24,26 +23,29 @@ const Spinner = () => (
   </svg>
 );
 
-function StatusBadge({ value, onLabel, offLabel, onColor, offColor }) {
-  const on = value !== false;
-  const { bg, text, dot } = on ? onColor : offColor;
+// Square badge (status display only)
+function Badge({ bg, color, dot, children }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${bg} ${text}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-      {on ? onLabel : offLabel}
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold"
+      style={{ background: bg, color }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: dot }} />
+      {children}
     </span>
   );
 }
 
-function ToggleBtn({ value, onLabel, offLabel, onClick, disabled, onBg, offBg }) {
-  const on = value !== false;
+// Square toggle button
+function ToggleBadge({ on, onBg, onColor, offBg, offColor, onLabel, offLabel, onClick, disabled }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:opacity-60 ${on ? onBg : offBg}`}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition disabled:opacity-60"
+      style={{ background: on ? onBg : offBg, color: on ? onColor : offColor }}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${on ? 'bg-current' : 'bg-current'}`} />
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: on ? onColor : offColor }} />
       {on ? onLabel : offLabel}
     </button>
   );
@@ -78,8 +80,6 @@ const IconBank = (
   </svg>
 );
 
-// ── column config per mode ─────────────────────────────────────────────────
-
 const COLS = {
   information: ['Username', 'Phone', 'Balance', 'Account', 'Betting', 'Withdrawal', 'Joined', 'Invite Code'],
   accounts:    ['Username', 'Account Status', 'Betting', 'Withdrawal', 'Role', 'RS Login', 'RS Auto Bet', 'Reset Password'],
@@ -87,50 +87,42 @@ const COLS = {
   transfer:    ['Username', 'Phone', 'Balance', 'Actions', 'Invite Code'],
 };
 
-// ── main component ─────────────────────────────────────────────────────────
-
 export default function UsersTable({
-  users,
-  loading,
-  mode = 'overview',
-  togglingId,
-  onToggleWithdrawal,
-  onToggleBetting,
-  onToggleAccountStatus,
-  onToggleRole,
-  onToggleRoyalSpinLogin,
-  onToggleRoyalSpin,
-  onAddMoney,
-  onDeductMoney,
-  onResetPassword,
-  onOpenBank,
+  users, loading, mode = 'overview', togglingId,
+  onToggleWithdrawal, onToggleBetting, onToggleAccountStatus, onToggleRole,
+  onToggleRoyalSpinLogin, onToggleRoyalSpin,
+  onAddMoney, onDeductMoney, onResetPassword, onOpenBank,
 }) {
-  const cols = COLS[mode] || COLS.overview;
+  const cols = COLS[mode] || COLS.information;
 
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-100">
         <thead>
-          <tr className="bg-gray-50">
+          <tr style={{ background: GL }} className="border-b border-gray-200">
             {cols.map((col) => (
-              <th key={col} className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th
+                key={col}
+                className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider"
+                style={{ color: G }}
+              >
                 {col}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
+        <tbody className="divide-y divide-gray-100">
           {loading ? (
             <tr>
               <td colSpan={cols.length} className="px-6 py-16 text-center">
                 <span className="inline-flex items-center gap-2 text-sm text-gray-500">
-                  <Spinner /> Loading users...
+                  <Spinner /> Loading users…
                 </span>
               </td>
             </tr>
           ) : users.length === 0 ? (
             <tr>
-              <td colSpan={cols.length} className="px-6 py-16 text-center text-sm text-gray-500">
+              <td colSpan={cols.length} className="px-6 py-16 text-center text-sm text-gray-400">
                 No users found
               </td>
             </tr>
@@ -160,19 +152,18 @@ export default function UsersTable({
   );
 }
 
-// ── row ────────────────────────────────────────────────────────────────────
-
-function UserRow({ user, mode, isToggling, onToggleWithdrawal, onToggleBetting, onToggleAccountStatus, onToggleRole, onToggleRoyalSpinLogin, onToggleRoyalSpin, onAddMoney, onDeductMoney, onResetPassword, onOpenBank }) {
+function UserRow({
+  user, mode, isToggling,
+  onToggleWithdrawal, onToggleBetting, onToggleAccountStatus, onToggleRole,
+  onToggleRoyalSpinLogin, onToggleRoyalSpin,
+  onAddMoney, onDeductMoney, onResetPassword, onOpenBank,
+}) {
   const notify = useNotify();
   const hasBank = user.hasBankCard || user.bankAccount;
 
   const handleCopy = async () => {
-    try {
-      await copyToClipboard(user.username);
-      notify.success('Username copied');
-    } catch {
-      notify.error('Failed to copy');
-    }
+    try { await copyToClipboard(user.username); notify.success('Username copied'); }
+    catch { notify.error('Failed to copy'); }
   };
 
   const UsernameCell = (
@@ -180,11 +171,16 @@ function UserRow({ user, mode, isToggling, onToggleWithdrawal, onToggleBetting, 
       <div className="flex items-center gap-2">
         <button
           onClick={() => onOpenBank?.(user)}
-          className={`text-left text-sm font-medium transition-colors hover:underline ${hasBank ? 'text-blue-600' : 'text-gray-900'}`}
+          className="text-left text-sm font-semibold transition-colors hover:underline"
+          style={{ color: hasBank ? G : '#111827' }}
         >
           {user.username}
         </button>
-        <button onClick={handleCopy} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600" title="Copy username">
+        <button
+          onClick={handleCopy}
+          className="flex h-6 w-6 items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+          title="Copy username"
+        >
           {IconCopy}
         </button>
       </div>
@@ -193,33 +189,36 @@ function UserRow({ user, mode, isToggling, onToggleWithdrawal, onToggleBetting, 
 
   if (mode === 'information') {
     return (
-      <tr className="transition-colors hover:bg-gray-50">
+      <tr className="hover:bg-[#f6fbf6] transition-colors">
         {UsernameCell}
         <td className="px-6 py-4 text-sm text-gray-600 tabular-nums">{formatPhone(user.phoneNumber)}</td>
-        <td className="px-6 py-4 text-sm font-semibold text-gray-900">₹{(user.money || 0).toLocaleString('en-US')}</td>
+        <td className="px-6 py-4 text-sm font-bold text-gray-900">₹{(user.money || 0).toLocaleString('en-US')}</td>
         <td className="px-6 py-4">
-          <StatusBadge
-            value={user.isActive}
-            onLabel="Active" offLabel="Disabled"
-            onColor={{ bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' }}
-            offColor={{ bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' }}
-          />
+          <Badge
+            bg={user.isActive !== false ? GL : '#fee2e2'}
+            color={user.isActive !== false ? G : '#b91c1c'}
+            dot={user.isActive !== false ? G : '#ef4444'}
+          >
+            {user.isActive !== false ? 'Active' : 'Disabled'}
+          </Badge>
         </td>
         <td className="px-6 py-4">
-          <StatusBadge
-            value={user.allowBetting}
-            onLabel="Enabled" offLabel="Disabled"
-            onColor={{ bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' }}
-            offColor={{ bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' }}
-          />
+          <Badge
+            bg={user.allowBetting !== false ? '#ede9fe' : '#fff7ed'}
+            color={user.allowBetting !== false ? '#6d28d9' : '#c2410c'}
+            dot={user.allowBetting !== false ? '#7c3aed' : '#ea580c'}
+          >
+            {user.allowBetting !== false ? 'Enabled' : 'Disabled'}
+          </Badge>
         </td>
         <td className="px-6 py-4">
-          <StatusBadge
-            value={user.allowWithdrawal}
-            onLabel="Allowed" offLabel="Disabled"
-            onColor={{ bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' }}
-            offColor={{ bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' }}
-          />
+          <Badge
+            bg={user.allowWithdrawal ? GL : '#fee2e2'}
+            color={user.allowWithdrawal ? G : '#b91c1c'}
+            dot={user.allowWithdrawal ? G : '#ef4444'}
+          >
+            {user.allowWithdrawal ? 'Allowed' : 'Disabled'}
+          </Badge>
         </td>
         <td className="px-6 py-4 text-sm text-gray-500">{formatDate(user.createdAt)}</td>
         <td className="px-6 py-4">
@@ -230,7 +229,7 @@ function UserRow({ user, mode, isToggling, onToggleWithdrawal, onToggleBetting, 
                 catch { notify.error('Failed to copy'); }
               }}
               title="Click to copy"
-              className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-600 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 font-mono text-xs text-gray-600 bg-gray-100 hover:bg-[#e8f5ea] hover:text-[#3a7d44] transition"
             >
               {user.inviteCode}
               <span className="opacity-50">{IconCopy}</span>
@@ -245,37 +244,33 @@ function UserRow({ user, mode, isToggling, onToggleWithdrawal, onToggleBetting, 
 
   if (mode === 'bank') {
     return (
-      <tr className="transition-colors hover:bg-gray-50">
+      <tr className="hover:bg-[#f6fbf6] transition-colors">
         {UsernameCell}
         <td className="px-6 py-4">
           {hasBank ? (
             <span className="flex items-center gap-2 text-sm font-medium text-gray-800">
-              {IconBank}
-              {user.bankAccount || 'Linked'}
+              {IconBank} {user.bankAccount || 'Linked'}
             </span>
           ) : (
             <span className="text-sm text-gray-400">—</span>
           )}
         </td>
         <td className="px-6 py-4">
-          {hasBank ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Linked
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-              No card
-            </span>
-          )}
+          <Badge
+            bg={hasBank ? GL : '#f3f4f6'}
+            color={hasBank ? G : '#6b7280'}
+            dot={hasBank ? G : '#9ca3af'}
+          >
+            {hasBank ? 'Linked' : 'No card'}
+          </Badge>
         </td>
         <td className="px-6 py-4">
           <button
             onClick={() => onOpenBank?.(user)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition active:scale-95 ${
-              hasBank ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-            }`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition"
+            style={hasBank
+              ? { background: '#eff6ff', color: '#1d4ed8' }
+              : { background: '#f3f4f6', color: '#6b7280' }}
           >
             {IconBank} {hasBank ? 'View / Edit' : 'No card'}
           </button>
@@ -286,111 +281,62 @@ function UserRow({ user, mode, isToggling, onToggleWithdrawal, onToggleBetting, 
 
   if (mode === 'accounts') {
     return (
-      <tr className="transition-colors hover:bg-gray-50">
+      <tr className="hover:bg-[#f6fbf6] transition-colors">
         {UsernameCell}
 
-        {/* Account Status */}
         <td className="px-6 py-4">
-          <button
-            onClick={() => onToggleAccountStatus?.(user)}
-            disabled={isToggling}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:opacity-60 ${
-              user.isActive !== false
-                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                : 'bg-red-50 text-red-700 hover:bg-red-100'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${user.isActive !== false ? 'bg-emerald-500' : 'bg-red-500'}`} />
-            {user.isActive !== false ? 'Active' : 'Disabled'}
-          </button>
+          <ToggleBadge
+            on={user.isActive !== false}
+            onBg={GL} onColor={G} offBg="#fee2e2" offColor="#b91c1c"
+            onLabel="Active" offLabel="Disabled"
+            onClick={() => onToggleAccountStatus?.(user)} disabled={isToggling}
+          />
         </td>
-
-        {/* Betting */}
         <td className="px-6 py-4">
-          <button
-            onClick={() => onToggleBetting?.(user)}
-            disabled={isToggling}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:opacity-60 ${
-              user.allowBetting !== false
-                ? 'bg-violet-50 text-violet-700 hover:bg-violet-100'
-                : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${user.allowBetting !== false ? 'bg-violet-500' : 'bg-orange-500'}`} />
-            {user.allowBetting !== false ? 'Enabled' : 'Disabled'}
-          </button>
+          <ToggleBadge
+            on={user.allowBetting !== false}
+            onBg="#ede9fe" onColor="#6d28d9" offBg="#fff7ed" offColor="#c2410c"
+            onLabel="Enabled" offLabel="Disabled"
+            onClick={() => onToggleBetting?.(user)} disabled={isToggling}
+          />
         </td>
-
-        {/* Withdrawal */}
         <td className="px-6 py-4">
-          <button
-            onClick={() => onToggleWithdrawal?.(user)}
-            disabled={isToggling}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:opacity-60 ${
-              user.allowWithdrawal
-                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                : 'bg-red-50 text-red-700 hover:bg-red-100'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${user.allowWithdrawal ? 'bg-emerald-500' : 'bg-red-500'}`} />
-            {user.allowWithdrawal ? 'Allowed' : 'Disabled'}
-          </button>
+          <ToggleBadge
+            on={user.allowWithdrawal}
+            onBg={GL} onColor={G} offBg="#fee2e2" offColor="#b91c1c"
+            onLabel="Allowed" offLabel="Disabled"
+            onClick={() => onToggleWithdrawal?.(user)} disabled={isToggling}
+          />
         </td>
-
-        {/* Role */}
         <td className="px-6 py-4">
-          <button
-            onClick={() => onToggleRole?.(user)}
-            disabled={isToggling}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-              user.role === 'admin'
-                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${user.role === 'admin' ? 'bg-amber-500' : 'bg-gray-400'}`} />
-            {user.role === 'admin' ? 'Admin' : 'User'}
-          </button>
+          <ToggleBadge
+            on={user.role === 'admin'}
+            onBg="#fef9c3" onColor="#a16207" offBg="#f3f4f6" offColor="#6b7280"
+            onLabel="Admin" offLabel="User"
+            onClick={() => onToggleRole?.(user)} disabled={isToggling}
+          />
         </td>
-
-        {/* RS Login */}
         <td className="px-6 py-4">
-          <button
-            onClick={() => onToggleRoyalSpinLogin?.(user)}
-            disabled={isToggling}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
-              user.royalSpinLoginEnabled
-                ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${user.royalSpinLoginEnabled ? 'bg-blue-500' : 'bg-gray-400'}`} />
-            {user.royalSpinLoginEnabled ? 'Enabled' : 'Disabled'}
-          </button>
+          <ToggleBadge
+            on={user.royalSpinLoginEnabled}
+            onBg="#eff6ff" onColor="#1d4ed8" offBg="#f3f4f6" offColor="#6b7280"
+            onLabel="Enabled" offLabel="Disabled"
+            onClick={() => onToggleRoyalSpinLogin?.(user)} disabled={isToggling}
+          />
         </td>
-
-        {/* RS Auto Bet */}
         <td className="px-6 py-4">
-          <button
+          <ToggleBadge
+            on={user.royalSpinActive}
+            onBg="#fff7ed" onColor="#c2410c" offBg="#f3f4f6" offColor="#6b7280"
+            onLabel="Working" offLabel="Stopped"
             onClick={() => onToggleRoyalSpin?.(user)}
             disabled={isToggling || !user.royalSpinLoginEnabled}
-            title={!user.royalSpinLoginEnabled ? 'Enable RS Login first' : ''}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${
-              user.royalSpinActive
-                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${user.royalSpinActive ? 'bg-orange-500' : 'bg-gray-400'}`} />
-            {user.royalSpinActive ? 'Working' : 'Stopped'}
-          </button>
+          />
         </td>
-
-        {/* Reset Password */}
         <td className="px-6 py-4">
           <button
             onClick={() => onResetPassword?.(user)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-100 active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#fef9c3] text-[#a16207] hover:bg-[#fef08a] transition"
           >
             {IconKey} Reset
           </button>
@@ -399,25 +345,33 @@ function UserRow({ user, mode, isToggling, onToggleWithdrawal, onToggleBetting, 
     );
   }
 
-  // transfer
+  // transfer mode
   return (
-    <tr className="transition-colors hover:bg-gray-50">
+    <tr className="hover:bg-[#f6fbf6] transition-colors">
       {UsernameCell}
       <td className="px-6 py-4 text-sm text-gray-600 tabular-nums">{formatPhone(user.phoneNumber)}</td>
-      <td className="px-6 py-4 text-sm font-semibold text-gray-900">₹{(user.money || 0).toLocaleString('en-US')}</td>
+      <td className="px-6 py-4 text-sm font-bold text-gray-900">₹{(user.money || 0).toLocaleString('en-US')}</td>
       <td className="px-6 py-4">
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => onAddMoney?.(user)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 active:scale-95">
+          <button
+            onClick={() => onAddMoney?.(user)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition"
+            style={{ background: GL, color: G }}
+          >
             {IconPlus} Add
           </button>
-          <button onClick={() => onDeductMoney?.(user)} className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 active:scale-95">
+          <button
+            onClick={() => onDeductMoney?.(user)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition"
+            style={{ background: '#fee2e2', color: '#b91c1c' }}
+          >
             {IconMinus} Deduct
           </button>
         </div>
       </td>
       <td className="px-6 py-4">
         {user.inviteCode ? (
-          <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-600">{user.inviteCode}</span>
+          <span className="px-2 py-0.5 font-mono text-xs text-gray-600 bg-gray-100">{user.inviteCode}</span>
         ) : (
           <span className="text-gray-400">—</span>
         )}

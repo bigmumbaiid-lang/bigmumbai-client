@@ -6,24 +6,22 @@ import { useContext } from 'react';
 import {
     LayoutDashboard, Users, CreditCard, Banknote, Gift,
     ArrowLeftRight, Megaphone, Bomb, Spade, Shield,
-    PanelLeftClose, PanelLeftOpen, LifeBuoy, LogOut,
-    ChevronDown, Menu, X, Bitcoin, UserCog,
-    Info, SlidersHorizontal,
+    PanelLeftClose, PanelLeftOpen, LogOut,
+    Menu, X, Bitcoin, UserCog, MoreHorizontal,
 } from 'lucide-react';
 
-const USER_SUBNAV = [
-    { key: 'information', label: 'Information',      icon: Info               },
-    { key: 'accounts',    label: 'Account Controls', icon: SlidersHorizontal  },
-    { key: 'bank',        label: 'Bank Card',        icon: CreditCard         },
-    { key: 'transfer',    label: 'Transfer',         icon: ArrowLeftRight     },
-];
+const G       = '#3a7d44';
+const GH      = '#2e6437';
+const BG      = '#eef4ef';
+const BG_CARD = '#ffffff';
+const DIVIDER = '#d3e4d6';
 
 const buildNavGroups = (isSuperAdmin) => [
     {
         title: 'Overview',
         items: [
-            { icon: LayoutDashboard, label: 'Dashboard', href: '/'     },
-            { icon: Users,           label: 'Users',     href: '/users', hasSubnav: true },
+            { icon: LayoutDashboard, label: 'Dashboard', href: '/'      },
+            { icon: Users,           label: 'Users',     href: '/users'  },
         ],
     },
     {
@@ -60,17 +58,26 @@ const buildNavGroups = (isSuperAdmin) => [
         title: 'Admin',
         items: [
             { icon: Shield, label: 'Security', href: '/security' },
-            ...(isSuperAdmin ? [{ icon: UserCog, label: 'Admin Management', href: '/admin-management' }] : []),
+            ...(isSuperAdmin ? [{ icon: UserCog, label: 'Admin Mgmt', href: '/admin-management' }] : []),
         ],
     },
+];
+
+// Bottom nav — 5 quick-access tabs for mobile
+const BOTTOM_NAV = [
+    { icon: LayoutDashboard, label: 'Home',     href: '/'          },
+    { icon: Users,           label: 'Users',    href: '/users'     },
+    { icon: CreditCard,      label: 'Payments', href: '/payments'  },
+    { icon: Gift,            label: 'Gifts',    href: '/gifts'     },
+    { icon: MoreHorizontal,  label: 'More',     href: null         }, // opens drawer
 ];
 
 function UserAvatar({ username, size = 'md' }) {
     const letter = (username || 'A')[0].toUpperCase();
     const sz = size === 'sm' ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm';
     return (
-        <div className={`${sz} rounded-xl flex items-center justify-center font-bold text-white shrink-0`}
-            style={{ background: 'linear-gradient(135deg,#d9ad82,#b1835a)', boxShadow: '0 2px 8px rgba(217,173,130,0.35)' }}>
+        <div className={`${sz} flex items-center justify-center font-bold text-white shrink-0`}
+             style={{ background: G }}>
             {letter}
         </div>
     );
@@ -79,115 +86,157 @@ function UserAvatar({ username, size = 'md' }) {
 export default function Sidebar() {
     const [isCollapsed,  setIsCollapsed ] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-    const [usersOpen,    setUsersOpen   ] = useState(true);
 
-    const navigate = useNavigate();
-    const location = useLocation();
+    const navigate  = useNavigate();
+    const location  = useLocation();
     const { logout, user } = useContext(AuthContext);
 
-    const navGroups  = buildNavGroups(user?.role === 'super_admin');
-    const active     = location.pathname;
-    const activeSubTab = new URLSearchParams(location.search).get('tab') || 'information';
+    const navGroups = buildNavGroups(user?.role === 'super_admin');
+    const active    = location.pathname;
 
     const handleLogout = () => { logout(); navigate('/login'); };
-
-    const handleNav = (href) => {
-        navigate(href);
-        setIsMobileOpen(false);
-    };
-
-    const handleUsersClick = () => {
-        if (active !== '/users') {
-            navigate(`/users?tab=${activeSubTab}`);
-            setUsersOpen(true);
-        } else {
-            setUsersOpen(v => !v);
-        }
-        setIsMobileOpen(false);
-    };
+    const handleNav    = (href) => { navigate(href); setIsMobileOpen(false); };
 
     return (
         <>
-            {/* Mobile hamburger */}
+            {/* ════════════════════════════════
+                MOBILE ONLY
+            ════════════════════════════════ */}
+
+            {/* Mobile top bar */}
             {createPortal(
-                <button
-                    aria-label="Open menu"
-                    className={`md:hidden fixed top-3.5 left-3.5 z-[70] w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-lg transition-opacity ${isMobileOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                    style={{ background: 'linear-gradient(135deg,#0d1117,#1a2035)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    onClick={() => setIsMobileOpen(true)}
+                <div
+                    className="md:hidden fixed inset-x-0 top-0 z-[60] flex items-center gap-3 px-4"
+                    style={{
+                        background: BG,
+                        borderBottom: `1px solid ${DIVIDER}`,
+                        height: 'calc(52px + env(safe-area-inset-top, 0px))',
+                        paddingTop: 'env(safe-area-inset-top, 0px)',
+                    }}
                 >
-                    <Menu size={18} />
-                </button>,
+                    <button
+                        onClick={() => setIsMobileOpen(true)}
+                        className="w-9 h-9 flex items-center justify-center shrink-0"
+                        style={{ color: G }}
+                    >
+                        <Menu size={22} />
+                    </button>
+                    <div className="flex flex-col leading-tight min-w-0">
+                        <span className="text-[14px] font-extrabold text-gray-900 truncate">Big Mumbai</span>
+                        <span className="text-[8px] font-semibold tracking-[0.16em] uppercase" style={{ color: G }}>
+                            Admin Panel
+                        </span>
+                    </div>
+                </div>,
                 document.body
             )}
 
             {/* Mobile backdrop */}
             {isMobileOpen && createPortal(
-                <div className="md:hidden fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm"
-                    onClick={() => setIsMobileOpen(false)} />,
+                <div
+                    className="md:hidden fixed inset-0 z-[65] bg-black/40"
+                    onClick={() => setIsMobileOpen(false)}
+                />,
                 document.body
             )}
 
-            {/* Sidebar */}
+            {/* Mobile bottom nav */}
+            {createPortal(
+                <nav
+                    className="md:hidden fixed inset-x-0 bottom-0 z-[60] flex"
+                    style={{
+                        background: BG_CARD,
+                        borderTop: `1px solid ${DIVIDER}`,
+                        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                    }}
+                >
+                    {BOTTOM_NAV.map(({ icon: Icon, label, href }) => {
+                        const isActive = href && (active === href || (href !== '/' && active.startsWith(href)));
+                        return (
+                            <button
+                                key={label}
+                                onClick={() => href ? handleNav(href) : setIsMobileOpen(true)}
+                                className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors"
+                                style={{ color: isActive ? G : '#9ca3af' }}
+                            >
+                                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+                                <span className="text-[10px] font-medium">{label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>,
+                document.body
+            )}
+
+            {/* ════════════════════════════════
+                SIDEBAR DRAWER / PANEL
+            ════════════════════════════════ */}
             <aside
                 className={`
-                    h-screen flex flex-col shrink-0
+                    h-[100dvh] flex flex-col shrink-0
                     fixed md:relative inset-y-0 left-0 z-[66]
                     transition-all duration-300 ease-out
+                    w-[min(280px,85vw)] md:w-auto
                     ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-                    ${isCollapsed ? 'w-[68px]' : 'w-[230px]'}
+                    ${isCollapsed ? 'md:w-[68px]' : 'md:w-[230px]'}
                 `}
-                style={{ background: 'linear-gradient(180deg,#0c0f16 0%,#0e1119 100%)', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+                style={{
+                    background: BG,
+                    borderRight: `1px solid ${DIVIDER}`,
+                    paddingTop: 'env(safe-area-inset-top, 0px)',
+                    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                }}
             >
-                {/* Ambient glows */}
-                <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                    <div className="absolute -top-24 -left-12 h-64 w-64 rounded-full bg-amber-500/[0.05] blur-3xl" />
-                    <div className="absolute bottom-32 -right-16 h-56 w-56 rounded-full bg-amber-600/[0.03] blur-3xl" />
-                </div>
-
                 {/* ── Header ── */}
-                <div className="relative flex items-center justify-between px-4 h-[60px] shrink-0"
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div
+                    className="flex items-center justify-between px-4 h-[60px] shrink-0"
+                    style={{ borderBottom: `1px solid ${DIVIDER}` }}
+                >
                     {!isCollapsed && (
                         <div className="flex flex-col leading-tight overflow-hidden">
-                            <span className="text-[15px] font-extrabold tracking-wide truncate"
-                                style={{ background: 'linear-gradient(90deg,#e2b97a,#c49055)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            <span className="text-[15px] font-extrabold tracking-wide truncate text-gray-900">
                                 Big Mumbai
                             </span>
-                            <span className="text-[9px] text-slate-600 font-semibold tracking-[0.18em] uppercase mt-0.5">
+                            <span className="text-[9px] font-semibold tracking-[0.18em] uppercase mt-0.5" style={{ color: G }}>
                                 Admin Panel
                             </span>
                         </div>
                     )}
-
+                    {/* Desktop collapse toggle */}
                     <button
                         onClick={() => setIsCollapsed(v => !v)}
                         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        className={`hidden md:grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-600 hover:text-slate-300 hover:bg-white/[0.06] transition-all focus:outline-none ${isCollapsed ? 'mx-auto' : ''}`}
+                        className={`hidden md:grid h-7 w-7 shrink-0 place-items-center text-gray-400 hover:text-gray-700 transition-colors focus:outline-none ${isCollapsed ? 'mx-auto' : ''}`}
                     >
                         {isCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
                     </button>
-
-                    <button onClick={() => setIsMobileOpen(false)}
-                        className="md:hidden grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.06] transition-all focus:outline-none">
-                        <X size={15} />
+                    {/* Mobile close button */}
+                    <button
+                        onClick={() => setIsMobileOpen(false)}
+                        className="md:hidden grid h-8 w-8 shrink-0 place-items-center text-gray-500 hover:text-gray-800 focus:outline-none"
+                    >
+                        <X size={18} />
                     </button>
                 </div>
 
                 {/* ── User card ── */}
-                <div className={`relative mx-3 mt-3.5 mb-1 rounded-xl overflow-hidden shrink-0 ${isCollapsed ? 'p-1.5 flex justify-center' : 'p-3'}`}
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div
+                    className={`mx-3 mt-3.5 mb-1 shrink-0 ${isCollapsed ? 'p-1.5 flex justify-center' : 'p-3'}`}
+                    style={{ background: BG_CARD, border: `1px solid ${DIVIDER}` }}
+                >
                     {isCollapsed ? (
                         <UserAvatar username={user?.username} size="sm" />
                     ) : (
                         <div className="flex items-center gap-2.5">
                             <UserAvatar username={user?.username} />
                             <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-semibold text-white truncate">{user?.username || 'Admin'}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 5px #34d399' }} />
-                                    <span className="text-[10px] text-emerald-400 font-medium">Online</span>
-                                    <span className="ml-1 text-[9px] text-slate-600 font-medium uppercase tracking-wide">
+                                <p className="text-[13px] font-semibold text-gray-900 truncate">
+                                    {user?.username || 'Admin'}
+                                </p>
+                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                    <span className="h-1.5 w-1.5 shrink-0" style={{ background: G }} />
+                                    <span className="text-[10px] font-medium" style={{ color: G }}>Online</span>
+                                    <span className="text-[9px] font-medium uppercase tracking-wide text-gray-400 truncate">
                                         {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                                     </span>
                                 </div>
@@ -197,112 +246,53 @@ export default function Sidebar() {
                 </div>
 
                 {/* ── Navigation ── */}
-                <nav className="relative flex-1 overflow-y-auto sidebar-scroll px-2.5 py-3 space-y-4">
+                <nav className="flex-1 overflow-y-auto sidebar-scroll px-2.5 py-3 space-y-4">
                     {navGroups.map((group) => (
                         <div key={group.title}>
                             {!isCollapsed && (
-                                <p className="px-2 mb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-700">
+                                <p className="px-2 mb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400">
                                     {group.title}
                                 </p>
                             )}
                             {isCollapsed && (
-                                <div className="mx-auto mb-2 h-px w-8" style={{ background: 'rgba(255,255,255,0.05)' }} />
+                                <div className="mx-auto mb-2 h-px w-8" style={{ background: DIVIDER }} />
                             )}
-
                             <div className="space-y-0.5">
-                                {group.items.map(({ icon: Icon, label, href, hasSubnav }) => {
-                                    const isActive  = active === href || (href === '/users' && active === '/users');
-                                    const isUsers   = hasSubnav;
-                                    const showSub   = isUsers && usersOpen && !isCollapsed;
-
+                                {group.items.map(({ icon: Icon, label, href }) => {
+                                    const isActive = active === href || (href !== '/' && active.startsWith(href));
                                     return (
-                                        <div key={href}>
-                                            <button
-                                                onClick={isUsers ? handleUsersClick : () => handleNav(href)}
-                                                title={isCollapsed ? label : undefined}
-                                                className={`
-                                                    relative flex w-full items-center gap-2.5 rounded-lg
-                                                    px-2.5 py-[9px] text-[13px] font-medium
-                                                    transition-all duration-150 focus:outline-none
-                                                    ${isCollapsed ? 'justify-center' : ''}
-                                                    ${isActive
-                                                        ? 'text-white'
-                                                        : 'text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]'
-                                                    }
-                                                `}
-                                                style={isActive ? {
-                                                    background: 'linear-gradient(135deg,rgba(217,173,130,0.14),rgba(177,131,90,0.08))',
-                                                    boxShadow: 'inset 0 0 0 1px rgba(217,173,130,0.12)',
-                                                } : {}}
-                                            >
-                                                {isActive && (
-                                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
-                                                        style={{ background: 'linear-gradient(180deg,#e2b97a,#b1835a)' }} />
-                                                )}
-                                                <Icon size={15} className={`shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-slate-600'}`} />
-                                                {!isCollapsed && (
-                                                    <>
-                                                        <span className="flex-1 truncate text-left">{label}</span>
-                                                        {isUsers && (
-                                                            <ChevronDown
-                                                                size={13}
-                                                                className={`shrink-0 text-slate-600 transition-transform duration-250 ${usersOpen ? 'rotate-180' : ''}`}
-                                                            />
-                                                        )}
-                                                    </>
-                                                )}
-                                            </button>
-
-                                            {/* ── Users subnav ── */}
-                                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showSub ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                                <div className="mt-1 mb-1 mx-1 rounded-xl overflow-hidden"
-                                                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    {USER_SUBNAV.map(({ key, label: subLabel, icon: SubIcon }, idx) => {
-                                                        const subActive = active === '/users' && activeSubTab === key;
-                                                        const isLast = idx === USER_SUBNAV.length - 1;
-                                                        return (
-                                                            <button
-                                                                key={key}
-                                                                onClick={() => handleNav(`/users?tab=${key}`)}
-                                                                className={`
-                                                                    relative flex w-full items-center gap-2.5
-                                                                    px-3 py-2 text-[12px] font-medium
-                                                                    transition-all duration-150 focus:outline-none
-                                                                    ${!isLast ? 'border-b' : ''}
-                                                                    ${subActive
-                                                                        ? 'text-amber-300'
-                                                                        : 'text-slate-500 hover:text-slate-200'
-                                                                    }
-                                                                `}
-                                                                style={{
-                                                                    borderColor: 'rgba(255,255,255,0.04)',
-                                                                    background: subActive
-                                                                        ? 'linear-gradient(90deg,rgba(217,173,130,0.10),rgba(177,131,90,0.05))'
-                                                                        : 'transparent',
-                                                                }}
-                                                            >
-                                                                {subActive && (
-                                                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-r-full"
-                                                                        style={{ background: 'linear-gradient(180deg,#e2b97a,#b1835a)' }} />
-                                                                )}
-                                                                <span className={`flex items-center justify-center h-5 w-5 rounded-md shrink-0 transition-all ${
-                                                                    subActive
-                                                                        ? 'bg-amber-400/20 text-amber-400'
-                                                                        : 'bg-white/[0.04] text-slate-600'
-                                                                }`}>
-                                                                    <SubIcon size={11} />
-                                                                </span>
-                                                                <span className="truncate">{subLabel}</span>
-                                                                {subActive && (
-                                                                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0"
-                                                                        style={{ boxShadow: '0 0 5px #fbbf24' }} />
-                                                                )}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <button
+                                            key={href}
+                                            onClick={() => handleNav(href)}
+                                            title={isCollapsed ? label : undefined}
+                                            className={`relative flex w-full items-center gap-2.5 px-2.5 py-[9px] text-[13px] font-medium transition-all duration-150 focus:outline-none ${isCollapsed ? 'justify-center' : ''}`}
+                                            style={isActive
+                                                ? { background: G, color: '#ffffff' }
+                                                : { color: '#374151' }}
+                                            onMouseEnter={e => {
+                                                if (!isActive) {
+                                                    e.currentTarget.style.background = '#dceede';
+                                                    e.currentTarget.style.color = GH;
+                                                }
+                                            }}
+                                            onMouseLeave={e => {
+                                                if (!isActive) {
+                                                    e.currentTarget.style.background = '';
+                                                    e.currentTarget.style.color = '#374151';
+                                                }
+                                            }}
+                                        >
+                                            {isActive && (
+                                                <span
+                                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5"
+                                                    style={{ background: GH }}
+                                                />
+                                            )}
+                                            <Icon size={15} className="shrink-0" />
+                                            {!isCollapsed && (
+                                                <span className="flex-1 truncate text-left">{label}</span>
+                                            )}
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -311,21 +301,17 @@ export default function Sidebar() {
                 </nav>
 
                 {/* ── Footer ── */}
-                <div className="relative shrink-0 px-2.5 py-3 space-y-0.5"
-                    style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <button
-                        onClick={() => navigate('/support')}
-                        title={isCollapsed ? 'Support' : undefined}
-                        className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] text-[13px] font-medium text-slate-600 hover:bg-white/[0.04] hover:text-slate-300 transition-all focus:outline-none ${isCollapsed ? 'justify-center' : ''}`}
-                    >
-                        <LifeBuoy size={15} className="shrink-0" />
-                        {!isCollapsed && <span>Support</span>}
-                    </button>
-
+                <div
+                    className="shrink-0 px-2.5 py-3"
+                    style={{ borderTop: `1px solid ${DIVIDER}` }}
+                >
                     <button
                         onClick={handleLogout}
                         title={isCollapsed ? 'Sign out' : undefined}
-                        className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] text-[13px] font-medium text-rose-500/60 hover:bg-rose-500/[0.08] hover:text-rose-400 transition-all focus:outline-none ${isCollapsed ? 'justify-center' : ''}`}
+                        className={`flex w-full items-center gap-2.5 px-2.5 py-[9px] text-[13px] font-medium transition-all focus:outline-none ${isCollapsed ? 'justify-center' : ''}`}
+                        style={{ color: '#ef4444' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
                     >
                         <LogOut size={15} className="shrink-0" />
                         {!isCollapsed && <span>Sign out</span>}

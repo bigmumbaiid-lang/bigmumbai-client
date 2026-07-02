@@ -6,13 +6,13 @@ const NotifyContext = createContext(null);
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
 const TOAST_VARIANTS = {
-  success: { Icon: CheckCircle, color: '#10b981', bar: '#10b981', bg: '#f0fdf4' },
-  error:   { Icon: XCircle,     color: '#e11d48', bar: '#e11d48', bg: '#fff1f2' },
-  warning: { Icon: AlertTriangle, color: '#f59e0b', bar: '#f59e0b', bg: '#fffbeb' },
-  info:    { Icon: Info,        color: '#2563eb', bar: '#2563eb', bg: '#eff6ff' },
+  success: { Icon: CheckCircle,   accent: '#3a7d44', iconColor: '#3a7d44', iconBg: '#e8f5ea', borderColor: '#c8e6c9' },
+  error:   { Icon: XCircle,       accent: '#dc2626', iconColor: '#dc2626', iconBg: '#fff1f2', borderColor: '#fecaca' },
+  warning: { Icon: AlertTriangle, accent: '#d97706', iconColor: '#d97706', iconBg: '#fffbeb', borderColor: '#fde68a' },
+  info:    { Icon: Info,          accent: '#2563eb', iconColor: '#2563eb', iconBg: '#eff6ff', borderColor: '#bfdbfe' },
 };
 
-const DURATION = 3200;
+const DURATION = 3500;
 
 function ToastItem({ toast, onRemove }) {
   const v = TOAST_VARIANTS[toast.type] || TOAST_VARIANTS.info;
@@ -22,7 +22,7 @@ function ToastItem({ toast, onRemove }) {
 
   const dismiss = useCallback(() => {
     setAlive(false);
-    setTimeout(() => onRemove(toast.id), 280);
+    setTimeout(() => onRemove(toast.id), 260);
   }, [toast.id, onRemove]);
 
   useEffect(() => {
@@ -34,31 +34,31 @@ function ToastItem({ toast, onRemove }) {
   return (
     <div
       style={{
-        transform: alive ? 'translateY(0)' : 'translateY(-14px)',
+        transform: alive ? 'translateY(0) scale(1)' : 'translateY(-12px) scale(0.97)',
         opacity: alive ? 1 : 0,
-        transition: 'transform 0.26s cubic-bezier(.22,.68,0,1.2), opacity 0.26s ease',
+        transition: 'transform 0.24s cubic-bezier(.22,.68,0,1.15), opacity 0.22s ease',
         background: 'white',
-        borderRadius: 12,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
-        border: '1px solid rgba(0,0,0,0.06)',
-        overflow: 'hidden',
-        minWidth: 260,
-        maxWidth: 340,
+        borderRadius: 0,
+        border: `1px solid ${v.borderColor}`,
+        borderLeft: `3px solid ${v.accent}`,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+        minWidth: 280,
+        maxWidth: 360,
         display: 'flex',
+        overflow: 'hidden',
       }}
     >
-      {/* left accent bar */}
-      <div style={{ width: 4, flexShrink: 0, background: v.bar }} />
-
-      <div style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 12px 12px 12px', gap: 10, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 14px', gap: 10, flex: 1 }}>
+        {/* Icon */}
         <div style={{
-          width: 30, height: 30, borderRadius: 8, background: v.bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          width: 32, height: 32, flexShrink: 0, background: v.iconBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Icon size={15} style={{ color: v.color }} strokeWidth={2.4} />
+          <Icon size={15} style={{ color: v.iconColor }} strokeWidth={2.4} />
         </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Text */}
+        <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0, lineHeight: 1.3 }}>
             {toast.title}
           </p>
@@ -69,26 +69,37 @@ function ToastItem({ toast, onRemove }) {
           )}
           {toast.detail && (
             <div style={{
-              marginTop: 7, background: '#f9fafb', borderRadius: 6,
-              padding: '5px 8px', fontSize: 11, fontFamily: 'monospace',
-              color: '#374151', border: '1px solid #f3f4f6', wordBreak: 'break-all',
+              marginTop: 6, background: '#f9fafb', border: '1px solid #e5e7eb',
+              padding: '4px 8px', fontSize: 11, fontFamily: 'monospace',
+              color: '#374151', wordBreak: 'break-all',
             }}>
               {toast.detail}
             </div>
           )}
         </div>
 
+        {/* Dismiss */}
         <button
           onClick={dismiss}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            color: '#9ca3af', padding: '2px', borderRadius: 5, flexShrink: 0,
-            display: 'flex', alignItems: 'center', marginTop: -1,
+            color: '#9ca3af', padding: '2px', flexShrink: 0,
+            display: 'flex', alignItems: 'center', marginTop: 1,
+            lineHeight: 1,
           }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#374151')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
         >
-          <X size={13} />
+          <X size={14} />
         </button>
       </div>
+
+      {/* Progress bar */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, height: 2,
+        background: v.accent, opacity: 0.35,
+        animation: `toastProgress ${DURATION}ms linear forwards`,
+      }} />
     </div>
   );
 }
@@ -101,8 +112,11 @@ function ToastStack({ toasts, onRemove }) {
       display: 'flex', flexDirection: 'column', gap: 8,
       alignItems: 'center', pointerEvents: 'none',
     }}>
+      <style>{`
+        @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
+      `}</style>
       {toasts.map(t => (
-        <div key={t.id} style={{ pointerEvents: 'auto' }}>
+        <div key={t.id} style={{ pointerEvents: 'auto', position: 'relative', width: '100%' }}>
           <ToastItem toast={t} onRemove={onRemove} />
         </div>
       ))}
@@ -114,8 +128,9 @@ function ToastStack({ toasts, onRemove }) {
 
 const CONFIRM_VARIANTS = {
   danger:  { Icon: AlertTriangle, iconColor: '#e11d48', iconBg: '#fff1f2', btnBg: '#dc2626', btnHover: '#b91c1c' },
-  primary: { Icon: Info,          iconColor: '#b1835a', iconBg: '#fdf3e8', btnBg: '#111827', btnHover: '#1f2937' },
-  warning: { Icon: AlertTriangle, iconColor: '#f59e0b', iconBg: '#fffbeb', btnBg: '#d97706', btnHover: '#b45309' },
+  primary: { Icon: Info,          iconColor: '#3a7d44', iconBg: '#e8f5ea', btnBg: '#3a7d44', btnHover: '#2e6437' },
+  success: { Icon: CheckCircle,   iconColor: '#3a7d44', iconBg: '#e8f5ea', btnBg: '#3a7d44', btnHover: '#2e6437' },
+  warning: { Icon: AlertTriangle, iconColor: '#d97706', iconBg: '#fffbeb', btnBg: '#d97706', btnHover: '#b45309' },
 };
 
 function ConfirmModal({ modal, onClose, onConfirm }) {
@@ -137,30 +152,35 @@ function ConfirmModal({ modal, onClose, onConfirm }) {
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 9990,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-        background: 'rgba(0,0,0,0.30)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px 16px 72px',
+        background: 'rgba(0,0,0,0.35)',
       }}
       onClick={onClose}
     >
       <div
         style={{
-          width: '100%', maxWidth: 400, background: 'white',
-          borderRadius: 16, boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+          width: '100%', maxWidth: 420, background: 'white',
+          borderRadius: 0, border: '1px solid #e5e7eb',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           overflow: 'hidden',
           animation: 'confirmPop .18s cubic-bezier(.22,.68,0,1.2)',
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* body */}
-        <div style={{ padding: '24px 22px 20px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        {/* Top accent bar */}
+        <div style={{ height: 3, background: v.btnBg }} />
+
+        {/* Body */}
+        <div style={{ padding: '20px 22px 18px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
           <div style={{
-            width: 42, height: 42, borderRadius: 11, background: v.iconBg, flexShrink: 0,
+            width: 40, height: 40, flexShrink: 0, background: v.iconBg,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Icon size={20} style={{ color: v.iconColor }} strokeWidth={2.2} />
+            <Icon size={19} style={{ color: v.iconColor }} strokeWidth={2.2} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#111827', margin: '0 0 6px', lineHeight: 1.3 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '0 0 5px', lineHeight: 1.3 }}>
               {modal.title}
             </h3>
             <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.55, margin: 0, whiteSpace: 'pre-line' }}>
@@ -169,24 +189,26 @@ function ConfirmModal({ modal, onClose, onConfirm }) {
           </div>
           <button onClick={onClose} style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-            color: '#9ca3af', borderRadius: 6, flexShrink: 0, marginTop: -4,
+            color: '#9ca3af', flexShrink: 0, marginTop: -2,
             display: 'flex', alignItems: 'center',
           }}>
             <X size={15} />
           </button>
         </div>
 
-        {/* footer */}
+        {/* Footer */}
         <div style={{
           display: 'flex', justifyContent: 'flex-end', gap: 8,
-          padding: '14px 22px', borderTop: '1px solid #f3f4f6', background: '#fafafa',
+          padding: '12px 22px 16px', borderTop: '1px solid #f3f4f6',
         }}>
           <button
             onClick={onClose}
             style={{
-              padding: '8px 18px', borderRadius: 8, border: '1px solid #e5e7eb',
+              padding: '8px 20px', border: '1px solid #d1d5db', borderRadius: 0,
               background: 'white', color: '#374151', fontSize: 13, fontWeight: 500, cursor: 'pointer',
             }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'white')}
           >
             {modal.cancelLabel || 'Cancel'}
           </button>
@@ -194,7 +216,7 @@ function ConfirmModal({ modal, onClose, onConfirm }) {
             ref={btnRef}
             onClick={onConfirm}
             style={{
-              padding: '8px 18px', borderRadius: 8, border: 'none',
+              padding: '8px 20px', border: 'none', borderRadius: 0,
               background: v.btnBg, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = v.btnHover)}
@@ -205,7 +227,7 @@ function ConfirmModal({ modal, onClose, onConfirm }) {
         </div>
       </div>
 
-      <style>{`@keyframes confirmPop{from{opacity:0;transform:scale(.94) translateY(10px)}to{opacity:1;transform:none}}`}</style>
+      <style>{`@keyframes confirmPop{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}`}</style>
     </div>
   );
 }

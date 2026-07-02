@@ -3,8 +3,8 @@ import api from '../utils/axios';
 // All user-related endpoints in one place. The axios interceptor handles auth,
 // so callers no longer pass tokens/headers. Each method returns response.data.
 export const usersApi = {
-  list: ({ page, limit, search }) =>
-    api.get('/user', { params: { page, limit, search } }).then((r) => r.data),
+  list: ({ page, limit, search, filter }) =>
+    api.get('/user', { params: { page, limit, search, filter } }).then((r) => r.data),
 
   toggleWithdrawal: (userId) =>
     api.patch(`/user/${userId}/toggle-withdrawal`).then((r) => r.data),

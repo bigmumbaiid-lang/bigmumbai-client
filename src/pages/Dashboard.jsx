@@ -1,80 +1,113 @@
-﻿import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/Sidebar';
 import { useState, useEffect, useCallback } from 'react';
 import DateRangePicker from '../components/DateRangePicker';
 import axios from '../utils/axios';
 import {
-  Users,
-  Wallet,
-  Banknote,
-  TrendingUp,
-  Dices,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Clock,
-  CreditCard,
-  Gamepad2,
+  Users, Wallet, Banknote, TrendingUp, Dices,
+  ArrowUpCircle, ArrowDownCircle, Clock, CreditCard, Gamepad2,
 } from 'lucide-react';
 
+// ── Leaf-green palette ─────────────────────────────────────────────────────
+const G  = '#3a7d44';
+const GL = '#e8f5ea';
+const GH = '#2e6437';
+
 const PRESETS = [
-  { key: 'today', label: 'Today' },
-  { key: 'last7', label: 'Last 7 Days' },
-  { key: 'last30', label: 'Last 30 Days' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'today',  label: 'Today'       },
+  { key: 'last7',  label: 'Last 7 Days' },
+  { key: 'last30', label: 'Last 30 Days'},
+  { key: 'custom', label: 'Custom'      },
 ];
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+const IST_OFFSET = 330 * 60000;
+const getISTDateStr = () => new Date(Date.now() + IST_OFFSET).toISOString().split('T')[0];
 
 const EMPTY = {
-  users: { total: 0, new: 0 },
-  deposits: { count: 0, amount: 0, pendingCount: 0, pendingAmount: 0, byChannel: {} },
+  users:       { total: 0, new: 0 },
+  deposits:    { count: 0, amount: 0, pendingCount: 0, pendingAmount: 0, byChannel: {} },
   withdrawals: { count: 0, amount: 0, settledAmount: 0, byStatus: {} },
-  transfers: { increase: { count: 0, amount: 0 }, decrease: { count: 0, amount: 0 } },
-  gaming: { mines: {}, blackjack: {}, totalWagered: 0, totalGgr: 0 },
+  transfers:   { increase: { count: 0, amount: 0 }, decrease: { count: 0, amount: 0 } },
+  gaming:      { mines: {}, blackjack: {}, totalWagered: 0, totalGgr: 0 },
   netFlow: 0,
 };
 
-function Dashboard() {
-  const [stats, setStats] = useState(EMPTY);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const inr = (n) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(n) || 0);
+const num = (n) => Number(n || 0).toLocaleString('en-US');
 
+// ── Stat Card ──────────────────────────────────────────────────────────────
+function StatCard({ label, value, sub, valueColor = '#111827', icon: Icon, iconColor, iconBg }) {
+  return (
+    <div className="bg-white border border-gray-200 p-3 md:p-5 flex items-start justify-between hover:border-[#3a7d44]/40 transition-colors">
+      <div className="min-w-0 mr-2">
+        <p className="text-[10px] md:text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1 md:mb-2 leading-tight">{label}</p>
+        <p className="text-lg md:text-[26px] leading-none font-bold tracking-tight" style={{ color: valueColor }}>{value}</p>
+        {sub && <p className="text-[10px] md:text-xs text-gray-400 mt-1 md:mt-2">{sub}</p>}
+      </div>
+      <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+        <Icon size={16} style={{ color: iconColor }} strokeWidth={2.2} />
+      </div>
+    </div>
+  );
+}
+
+// ── Channel progress row ───────────────────────────────────────────────────
+function ChannelRow({ label, amount, count, pct, barColor }) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1.5">
+        <span className="text-gray-600 font-medium">{label}</span>
+        <span className="font-semibold text-gray-900">
+          {inr(amount)}{' '}
+          <span className="text-gray-400 font-normal text-xs">· {num(count)}</span>
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 overflow-hidden">
+        <div
+          className="h-full transition-all duration-500"
+          style={{ width: `${pct}%`, background: barColor }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────
+function Dashboard() {
+  const [stats, setStats]   = useState(EMPTY);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState(null);
   const [preset, setPreset] = useState('today');
-  const [custom, setCustom] = useState({ startDate: todayStr(), endDate: todayStr() });
+  const [custom, setCustom] = useState({ startDate: getISTDateStr(), endDate: getISTDateStr() });
 
   const fetchStats = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const token = localStorage.getItem('token');
-      const params =
-        preset === 'custom'
-          ? { startDate: custom.startDate, endDate: custom.endDate }
-          : { range: preset };
+      setLoading(true); setError(null);
+      const token  = localStorage.getItem('token');
+      const params = preset === 'custom'
+        ? { startDate: custom.startDate, endDate: custom.endDate }
+        : { range: preset };
 
       const { data } = await axios.get('/dashboard/stats', {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });
 
-      if (data && data.success) {
+      if (data?.success) {
         setStats({
-          ...EMPTY,
-          ...data,
-          users: { ...EMPTY.users, ...(data.users || {}) },
-          deposits: { ...EMPTY.deposits, ...(data.deposits || {}) },
+          ...EMPTY, ...data,
+          users:       { ...EMPTY.users,       ...(data.users       || {}) },
+          deposits:    { ...EMPTY.deposits,    ...(data.deposits    || {}) },
           withdrawals: { ...EMPTY.withdrawals, ...(data.withdrawals || {}) },
-          transfers: { ...EMPTY.transfers, ...(data.transfers || {}) },
-          gaming: { ...EMPTY.gaming, ...(data.gaming || {}) },
+          transfers:   { ...EMPTY.transfers,   ...(data.transfers   || {}) },
+          gaming:      { ...EMPTY.gaming,      ...(data.gaming      || {}) },
         });
       } else {
         setError(data?.message || 'Failed to load data');
       }
     } catch (err) {
-      console.error('[dashboard] fetch error:', err);
       setError(err.response?.data?.message || 'Failed to connect to server');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [preset, custom]);
 
   useEffect(() => {
@@ -82,235 +115,227 @@ function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset]);
 
-  const inr = (n) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(n) || 0);
-  const num = (n) => Number(n || 0).toLocaleString('en-US');
-
-  const StatCard = ({ label, value, sub, accent = 'text-gray-900', icon: Icon, iconColor, iconBg }) => (
-    <div className="group bg-white rounded-2xl shadow-[0_1px_3px_rgba(17,24,39,0.06)] border border-gray-100 p-5 hover:shadow-[0_8px_24px_rgba(17,24,39,0.08)] hover:-translate-y-0.5 transition-all duration-200">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-[13px] text-gray-500 font-medium">{label}</p>
-          <p className={`text-[28px] leading-tight font-bold mt-2 tracking-tight ${accent}`}>{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-2">{sub}</p>}
-        </div>
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
-          style={{ background: iconBg }}
-        >
-          <Icon size={21} style={{ color: iconColor }} strokeWidth={2.2} />
-        </div>
-      </div>
-    </div>
-  );
-
   const d = stats.deposits;
   const w = stats.withdrawals;
   const g = stats.gaming;
 
+  const channels = [
+    { key: 'watchpays', label: 'WatchPays',  bar: '#7c3aed' },
+    { key: 'jazpays',   label: 'JazPays',    bar: '#2563eb' },
+    { key: 'usdt',      label: 'USDT TRC20', bar: '#059669' },
+    { key: 'trx',       label: 'TRX TRC20',  bar: '#1d4ed8' },
+  ];
+
   return (
-    <div className="flex h-screen bg-[#f6f7fb]">
+    <div className="flex h-screen" style={{ background: '#f4f7f4' }}>
       <Sidebar />
 
       <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Overview of platform activity</p>
-          </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {PRESETS.map((p) => (
-              <button
-                key={p.key}
-                onClick={() => setPreset(p.key)}
-                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${preset === p.key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                style={preset === p.key ? { background: 'linear-gradient(90deg,#d9ad82,#b1835a)' } : undefined}
-              >
-                {p.label}
-              </button>
-            ))}
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 md:py-4 md:sticky md:top-0 z-10">
+          {/* Title row */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+              <p className="text-xs text-gray-400 mt-0.5 hidden md:block">Overview of platform activity</p>
+            </div>
+            {/* Desktop preset buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              {PRESETS.map((p) => {
+                const active = preset === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    onClick={() => setPreset(p.key)}
+                    className="px-4 py-1.5 text-sm font-semibold border transition whitespace-nowrap"
+                    style={active ? { background: G, borderColor: G, color: '#fff' } : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }}
+                    onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = G; }}
+                    onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = '#d1d5db'; }}
+                  >{p.label}</button>
+                );
+              })}
+              {preset === 'custom' && (
+                <DateRangePicker from={custom.startDate} to={custom.endDate}
+                  onChange={(f, t) => { setCustom({ startDate: f, endDate: t }); if (f && t) fetchStats(); }}
+                  placeholder="Pick date range" />
+              )}
+            </div>
+          </div>
+          {/* Mobile preset buttons — scrollable row */}
+          <div className="flex md:hidden items-center gap-2 mt-2 overflow-x-auto scrollbar-none">
+            {PRESETS.map((p) => {
+              const active = preset === p.key;
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => setPreset(p.key)}
+                  className="px-3 py-1.5 text-sm font-semibold border transition shrink-0"
+                  style={active ? { background: G, borderColor: G, color: '#fff' } : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }}
+                >{p.label}</button>
+              );
+            })}
             {preset === 'custom' && (
-              <DateRangePicker
-                from={custom.startDate} to={custom.endDate}
-                onChange={(f, t) => {
-                  setCustom({ startDate: f, endDate: t });
-                  if (f && t) fetchStats();
-                }}
-                placeholder="Pick date range"
-              />
+              <DateRangePicker from={custom.startDate} to={custom.endDate}
+                onChange={(f, t) => { setCustom({ startDate: f, endDate: t }); if (f && t) fetchStats(); }}
+                placeholder="Pick date range" />
             )}
           </div>
-        </div>
+        </header>
 
-        <div className="p-8">
+        <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-5">
+
+          {/* ── Error ──────────────────────────────────────────────────── */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 text-sm">{error}</div>
+            <div className="border border-red-300 bg-red-50 text-red-600 px-4 py-3 text-sm">{error}</div>
           )}
 
+          {/* ── Skeleton ───────────────────────────────────────────────── */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
-                  <div className="h-3.5 bg-gray-100 rounded w-2/3 mb-3" />
-                  <div className="h-7 bg-gray-100 rounded w-1/2" />
+                <div key={i} className="bg-white border border-gray-200 p-5 animate-pulse">
+                  <div className="h-3 bg-gray-100 w-2/3 mb-4" />
+                  <div className="h-7 bg-gray-100 w-1/2 mb-2" />
+                  <div className="h-2.5 bg-gray-100 w-3/4" />
                 </div>
               ))}
             </div>
           ) : (
             <>
-              {/* Primary row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* ── Row 1 stat cards ─────────────────────────────────── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <StatCard
                   label="Total Users"
                   value={num(stats.users.total)}
                   sub={`+${num(stats.users.new)} new in period`}
-                  icon={Users}
-                  iconColor="#2563eb"
-                  iconBg="#eff6ff"
+                  icon={Users} iconColor="#2563eb" iconBg="#eff6ff"
                 />
                 <StatCard
                   label="Deposits"
                   value={inr(d.amount)}
                   sub={`${num(d.count)} successful · ${num(d.pendingCount)} pending`}
-                  accent="text-emerald-600"
-                  icon={Wallet}
-                  iconColor="#059669"
-                  iconBg="#ecfdf5"
+                  valueColor={G}
+                  icon={Wallet} iconColor={G} iconBg={GL}
                 />
                 <StatCard
                   label="Withdrawals (settled)"
                   value={inr(w.settledAmount)}
                   sub={`${num(w.byStatus?.pending?.count || 0)} pending requests`}
-                  accent="text-rose-600"
-                  icon={Banknote}
-                  iconColor="#e11d48"
-                  iconBg="#fff1f2"
+                  valueColor="#e11d48"
+                  icon={Banknote} iconColor="#e11d48" iconBg="#fff1f2"
                 />
                 <StatCard
                   label="Net Cash Flow"
                   value={inr(stats.netFlow)}
                   sub="Deposits − settled withdrawals"
-                  accent={stats.netFlow >= 0 ? 'text-emerald-600' : 'text-rose-600'}
-                  icon={TrendingUp}
-                  iconColor="#4f46e5"
-                  iconBg="#eef2ff"
+                  valueColor={stats.netFlow >= 0 ? G : '#e11d48'}
+                  icon={TrendingUp} iconColor="#4f46e5" iconBg="#eef2ff"
                 />
               </div>
 
-              {/* Secondary row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mt-5">
+              {/* ── Row 2 stat cards ─────────────────────────────────── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <StatCard
                   label="Gaming Revenue (GGR)"
                   value={inr(g.totalGgr)}
                   sub={`${inr(g.totalWagered)} wagered`}
-                  accent={(g.totalGgr || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}
-                  icon={Dices}
-                  iconColor="#d97706"
-                  iconBg="#fffbeb"
+                  valueColor={(g.totalGgr || 0) >= 0 ? G : '#e11d48'}
+                  icon={Dices} iconColor="#d97706" iconBg="#fef9c3"
                 />
                 <StatCard
                   label="Admin Top-ups"
                   value={inr(stats.transfers.increase.amount)}
                   sub={`${num(stats.transfers.increase.count)} transactions`}
-                  accent="text-emerald-600"
-                  icon={ArrowUpCircle}
-                  iconColor="#059669"
-                  iconBg="#ecfdf5"
+                  valueColor={G}
+                  icon={ArrowUpCircle} iconColor={G} iconBg={GL}
                 />
                 <StatCard
                   label="Admin Deductions"
                   value={inr(stats.transfers.decrease.amount)}
                   sub={`${num(stats.transfers.decrease.count)} transactions`}
-                  accent="text-rose-600"
-                  icon={ArrowDownCircle}
-                  iconColor="#e11d48"
-                  iconBg="#fff1f2"
+                  valueColor="#e11d48"
+                  icon={ArrowDownCircle} iconColor="#e11d48" iconBg="#fff1f2"
                 />
                 <StatCard
                   label="Pending Deposits"
                   value={inr(d.pendingAmount)}
                   sub={`${num(d.pendingCount)} awaiting confirmation`}
-                  accent="text-amber-600"
-                  icon={Clock}
-                  iconColor="#d97706"
-                  iconBg="#fffbeb"
+                  valueColor="#a16207"
+                  icon={Clock} iconColor="#d97706" iconBg="#fef9c3"
                 />
               </div>
 
-              {/* Breakdowns */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+              {/* ── Breakdowns row ───────────────────────────────────── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
                 {/* Deposits by channel */}
-                <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(17,24,39,0.06)] border border-gray-100 p-6">
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                      <CreditCard size={17} className="text-emerald-600" strokeWidth={2.2} />
+                <div className="bg-white border border-gray-200 p-6">
+                  {/* Section header */}
+                  <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-gray-100">
+                    <div className="w-7 h-7 flex items-center justify-center" style={{ background: GL }}>
+                      <CreditCard size={15} style={{ color: G }} strokeWidth={2.2} />
                     </div>
-                    <h3 className="font-semibold text-gray-900">Deposits by Channel</h3>
+                    <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Deposits by Channel</h3>
                   </div>
                   <div className="space-y-4">
-                    {[
-                      { key: 'watchpays', label: 'Watchpays',  color: 'linear-gradient(90deg,#a78bfa,#7c3aed)' },
-                      { key: 'jazpays',   label: 'Jazpays',    color: 'linear-gradient(90deg,#7dd3fc,#2563eb)' },
-                      { key: 'usdt',      label: 'USDT TRC20', color: 'linear-gradient(90deg,#6ee7b7,#059669)' },
-                      { key: 'trx',       label: 'TRX TRC20',  color: 'linear-gradient(90deg,#93c5fd,#1d4ed8)' },
-                    ].map(({ key, label, color }) => {
+                    {channels.map(({ key, label, bar }) => {
                       const row = d.byChannel?.[key] || { count: 0, amount: 0 };
                       const pct = d.amount > 0 ? Math.round((row.amount / d.amount) * 100) : 0;
                       return (
-                        <div key={key}>
-                          <div className="flex justify-between text-sm mb-1.5">
-                            <span className="text-gray-600 font-medium">{label}</span>
-                            <span className="font-semibold text-gray-900">
-                              {inr(row.amount)} <span className="text-gray-400 font-normal text-xs">· {num(row.count)}</span>
-                            </span>
-                          </div>
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${pct}%`, background: color }}
-                            />
-                          </div>
-                        </div>
+                        <ChannelRow
+                          key={key}
+                          label={label}
+                          amount={row.amount}
+                          count={row.count}
+                          pct={pct}
+                          barColor={bar}
+                        />
                       );
                     })}
                     {d.amount === 0 && (
-                      <p className="text-xs text-gray-400 text-center py-2">No deposits in this period</p>
+                      <p className="text-xs text-gray-400 text-center py-4">No deposits in this period</p>
                     )}
                   </div>
                 </div>
 
-                {/* Gaming split */}
-                <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(17,24,39,0.06)] border border-gray-100 p-6">
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                      <Gamepad2 size={17} className="text-amber-600" strokeWidth={2.2} />
+                {/* Gaming performance */}
+                <div className="bg-white border border-gray-200 p-6">
+                  <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-gray-100">
+                    <div className="w-7 h-7 flex items-center justify-center bg-amber-50">
+                      <Gamepad2 size={15} className="text-amber-600" strokeWidth={2.2} />
                     </div>
-                    <h3 className="font-semibold text-gray-900">Gaming Performance</h3>
+                    <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Gaming Performance</h3>
                   </div>
-                  <div className="space-y-2">
+                  <div className="divide-y divide-gray-100">
                     {[
-                      { name: 'Mines', data: g.mines || {} },
+                      { name: 'Mines',     data: g.mines     || {} },
                       { name: 'Blackjack', data: g.blackjack || {} },
-                    ].map(({ name, data }) => (
-                      <div
-                        key={name}
-                        className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-gray-50 transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">{name}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {num(data.rounds)} rounds · {inr(data.wagered)} wagered
-                          </p>
+                    ].map(({ name, data }) => {
+                      const positive = (data.ggr || 0) >= 0;
+                      return (
+                        <div key={name} className="flex items-center justify-between py-4">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{name}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {num(data.rounds)} rounds · {inr(data.wagered)} wagered
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p
+                              className="text-base font-bold"
+                              style={{ color: positive ? G : '#e11d48' }}
+                            >
+                              {positive ? '+' : ''}{inr(data.ggr)}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">house profit</p>
+                          </div>
                         </div>
-                        <span className={`text-sm font-bold ${(data.ggr || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {inr(data.ggr)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
+
               </div>
             </>
           )}

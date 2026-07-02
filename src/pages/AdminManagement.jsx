@@ -10,7 +10,9 @@ import {
     UserPlus, Lock, Unlock,
 } from 'lucide-react';
 
-const BRAND = 'linear-gradient(135deg,#d9ad82,#b1835a)';
+const G  = '#3a7d44';
+const GL = '#e8f5ea';
+const GH = '#2e6437';
 
 export default function AdminManagement() {
     const { user: me }  = useContext(AuthContext);
@@ -137,51 +139,53 @@ export default function AdminManagement() {
         <>
         <style>{`@keyframes fadeIn{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}`}</style>
 
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <div className="flex h-screen overflow-hidden" style={{ background: '#f4f7f4' }}>
             <Sidebar />
 
             <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto">
 
                     {/* ── Header ── */}
-                    <div className="bg-white border-b border-gray-100 px-8 pt-7 pb-6">
-                        <div className="flex items-center justify-between mb-6">
+                    <div className="bg-white border-b border-gray-100 px-4 md:px-8 py-4 md:py-6 md:sticky md:top-0 z-10">
+                        <div className="flex items-start sm:items-center justify-between gap-3 mb-4 md:mb-6">
                             <div>
-                                <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: '#b1835a' }}>Administration</p>
-                                <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Admin Management</h1>
-                                <p className="text-sm text-gray-400 mt-0.5">Create accounts, manage roles and control access</p>
+                                <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: G }}>Administration</p>
+                                <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 leading-tight">Admin Management</h1>
+                                <p className="text-sm text-gray-400 mt-0.5 hidden md:block">Create accounts, manage roles and control access</p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                                 <button onClick={() => fetchAdmins(true)} disabled={refreshing}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 shadow-sm">
+                                    className="flex items-center gap-1.5 px-2.5 md:px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap">
                                     <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-                                    Refresh
+                                    <span className="hidden sm:inline">Refresh</span>
                                 </button>
                                 <button
                                     onClick={() => { setShowCreate(true); setFormErr(''); setForm({ username: '', password: '', role: 'admin' }); }}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold shadow-md hover:opacity-90 transition-opacity"
-                                    style={{ background: BRAND }}>
+                                    className="flex items-center gap-1.5 px-3 md:px-4 py-2.5 text-white text-sm font-semibold transition whitespace-nowrap"
+                                    style={{ background: G }}
+                                    onMouseEnter={e => e.currentTarget.style.background = GH}
+                                    onMouseLeave={e => e.currentTarget.style.background = G}>
                                     <Plus size={15} /> New Admin
                                 </button>
                             </div>
                         </div>
 
                         {/* Stat cards */}
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                             {[
                                 { label: 'Total Admins',  value: admins.length, sub: 'All accounts',    color: '#6366f1', bg: '#eef2ff', icon: Users },
                                 { label: 'Super Admins',  value: superCount,    sub: 'Full access',     color: '#b1835a', bg: '#fdf6ee', icon: Crown },
                                 { label: 'Admins',        value: adminCount,    sub: 'Standard access', color: '#64748b', bg: '#f1f5f9', icon: Shield },
                                 { label: 'Blocked',       value: blockedCount,  sub: 'Access revoked',  color: '#ef4444', bg: '#fef2f2', icon: Ban },
                             ].map(({ label, value, sub, color, bg, icon: Icon }) => (
-                                <div key={label} className="rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow" style={{ background: bg }}>
-                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: color + '20' }}>
-                                        <Icon size={19} style={{ color }} />
+                                <div key={label} className="border border-gray-200 p-3 md:p-4 flex items-center gap-3 md:gap-4 hover:border-[#3a7d44]/40 transition-colors" style={{ background: bg }}>
+                                    <div className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center shrink-0" style={{ background: color + '20' }}>
+                                        <Icon size={17} style={{ color }} />
                                     </div>
                                     <div>
-                                        <p className="text-2xl font-extrabold text-gray-900 leading-none">{value}</p>
+                                        <p className="text-xl md:text-2xl font-extrabold text-gray-900 leading-none">{value}</p>
                                         <p className="text-xs font-semibold text-gray-500 mt-0.5">{label}</p>
-                                        <p className="text-[11px] text-gray-400">{sub}</p>
+                                        <p className="text-[11px] text-gray-400 hidden sm:block">{sub}</p>
                                     </div>
                                 </div>
                             ))}
@@ -189,19 +193,19 @@ export default function AdminManagement() {
                     </div>
 
                     {/* ── Content ── */}
-                    <div className="px-8 py-6 space-y-4">
+                    <div className="p-4 md:p-6 lg:p-8 space-y-4">
                         {loadErr && (
-                            <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-600">
+                            <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 text-sm text-red-600">
                                 <AlertTriangle size={16} className="shrink-0" /> {loadErr}
                             </div>
                         )}
 
                         {/* Table card */}
-                        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="bg-white border border-gray-200 overflow-hidden">
 
                             {/* Search bar */}
-                            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-50">
-                                <div className="flex items-center gap-2.5 flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-2.5">
+                            <div className="flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-b border-gray-100">
+                                <div className="flex items-center gap-2.5 flex-1 bg-gray-50 border border-gray-200 px-4 py-2.5">
                                     <Search size={14} className="text-gray-300 shrink-0" />
                                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                                         placeholder="Search admins by name or role…"
@@ -212,29 +216,30 @@ export default function AdminManagement() {
                                         </button>
                                     )}
                                 </div>
-                                <span className="text-xs text-gray-300 font-medium whitespace-nowrap px-3 py-2 bg-gray-50 rounded-xl">
+                                <span className="text-xs text-gray-400 font-medium whitespace-nowrap px-3 py-2 bg-gray-50 border border-gray-200">
                                     {filtered.length} / {admins.length}
                                 </span>
                             </div>
 
+                            <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-gray-50">
-                                        <th className="text-left px-6 py-3 text-[11px] font-bold text-gray-300 uppercase tracking-widest">Account</th>
-                                        <th className="text-left px-6 py-3 text-[11px] font-bold text-gray-300 uppercase tracking-widest">Role</th>
-                                        <th className="text-left px-6 py-3 text-[11px] font-bold text-gray-300 uppercase tracking-widest">Status</th>
-                                        <th className="text-left px-6 py-3 text-[11px] font-bold text-gray-300 uppercase tracking-widest">Joined</th>
-                                        <th className="text-right px-6 py-3 text-[11px] font-bold text-gray-300 uppercase tracking-widest">Actions</th>
+                                    <tr className="border-b border-gray-200" style={{ background: GL }}>
+                                        <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: G }}>Account</th>
+                                        <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: G }}>Role</th>
+                                        <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: G }}>Status</th>
+                                        <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: G }}>Joined</th>
+                                        <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: G }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {loading && [...Array(4)].map((_, i) => (
                                         <tr key={i} className="animate-pulse">
-                                            <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-gray-100 rounded-2xl shrink-0" /><div className="space-y-1.5"><div className="h-3.5 bg-gray-100 rounded-full w-28" /><div className="h-2.5 bg-gray-50 rounded-full w-16" /></div></div></td>
-                                            <td className="px-6 py-4"><div className="h-6 bg-gray-100 rounded-full w-24" /></td>
-                                            <td className="px-6 py-4"><div className="h-6 bg-gray-100 rounded-full w-16" /></td>
-                                            <td className="px-6 py-4"><div className="h-3.5 bg-gray-100 rounded-full w-20" /></td>
-                                            <td className="px-6 py-4 text-right"><div className="h-8 bg-gray-100 rounded-xl w-40 ml-auto" /></td>
+                                            <td className="px-6 py-4"><div className="space-y-1.5"><div className="h-3.5 bg-gray-100 w-28" /><div className="h-2.5 bg-gray-50 w-16" /></div></td>
+                                            <td className="px-6 py-4"><div className="h-6 bg-gray-100 w-24" /></td>
+                                            <td className="px-6 py-4"><div className="h-6 bg-gray-100 w-16" /></td>
+                                            <td className="px-6 py-4"><div className="h-3.5 bg-gray-100 w-20" /></td>
+                                            <td className="px-6 py-4 text-right"><div className="h-8 bg-gray-100 w-40 ml-auto" /></td>
                                         </tr>
                                     ))}
 
@@ -246,38 +251,30 @@ export default function AdminManagement() {
 
                                         return (
                                             <tr key={admin._id}
-                                                className={`group transition-colors ${isBlocked ? 'bg-red-50/40' : 'hover:bg-slate-50/60'}`}
+                                                className={`group transition-colors ${isBlocked ? 'bg-red-50/40' : 'hover:bg-[#f6fbf6]'}`}
                                                 style={{ animation: 'fadeIn 0.2s ease' }}>
 
                                                 {/* Account */}
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm"
-                                                            style={{ background: isBlocked ? '#cbd5e1' : BRAND }}>
-                                                            {admin.username[0].toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`font-semibold ${isBlocked ? 'text-gray-400' : 'text-gray-800'}`}>
-                                                                    {admin.username}
-                                                                </span>
-                                                                {isSelf && (
-                                                                    <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">You</span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-[11px] text-gray-300 mt-0.5">Admin account</p>
-                                                        </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`font-semibold ${isBlocked ? 'text-gray-400' : 'text-gray-800'}`}>
+                                                            {admin.username}
+                                                        </span>
+                                                        {isSelf && (
+                                                            <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5">You</span>
+                                                        )}
                                                     </div>
+                                                    <p className="text-[11px] text-gray-400 mt-0.5">Admin account</p>
                                                 </td>
 
                                                 {/* Role */}
                                                 <td className="px-6 py-4">
                                                     {isSuperTgt ? (
-                                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700">
+                                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 border border-amber-200 bg-amber-50 text-amber-700">
                                                             <ShieldCheck size={11} /> Super Admin
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-500">
+                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 border border-slate-200 bg-slate-50 text-slate-500">
                                                             <Shield size={11} /> Admin
                                                         </span>
                                                     )}
@@ -286,12 +283,12 @@ export default function AdminManagement() {
                                                 {/* Status */}
                                                 <td className="px-6 py-4">
                                                     {isBlocked ? (
-                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-red-100 bg-red-50 text-red-500">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" /> Blocked
+                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 border border-red-200 bg-red-50 text-red-500">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" /> Blocked
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" /> Active
+                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 border border-emerald-200 bg-emerald-50 text-emerald-600">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] shrink-0" /> Active
                                                         </span>
                                                     )}
                                                 </td>
@@ -305,24 +302,24 @@ export default function AdminManagement() {
                                                         {(isSelf || canAct) && (
                                                             <button
                                                                 onClick={() => { setPwdTarget(admin); setNewPwd(''); setPwdErr(''); setShowNewPwd(false); }}
-                                                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-100 bg-white text-gray-500 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50 shadow-sm transition-all">
+                                                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-gray-200 bg-white text-gray-500 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
                                                                 <KeyRound size={12} /> Password
                                                             </button>
                                                         )}
                                                         {canAct && (
                                                             <button
                                                                 onClick={() => doPromote(admin)}
-                                                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-100 bg-white text-gray-500 hover:border-amber-200 hover:text-amber-700 hover:bg-amber-50 shadow-sm transition-all">
+                                                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-gray-200 bg-white text-gray-500 hover:border-[#3a7d44] hover:text-[#3a7d44] hover:bg-[#e8f5ea] transition-all">
                                                                 <ShieldCheck size={12} /> Promote
                                                             </button>
                                                         )}
                                                         {canAct && (
                                                             <button
                                                                 onClick={() => doBlock(admin)}
-                                                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border shadow-sm transition-all ${
+                                                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border transition-all ${
                                                                     isBlocked
-                                                                        ? 'border-gray-100 bg-white text-gray-500 hover:border-emerald-200 hover:text-emerald-600 hover:bg-emerald-50'
-                                                                        : 'border-gray-100 bg-white text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50'
+                                                                        ? 'border-gray-200 bg-white text-gray-500 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50'
+                                                                        : 'border-gray-200 bg-white text-gray-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50'
                                                                 }`}>
                                                                 {isBlocked ? <><Unlock size={12} /> Unblock</> : <><Ban size={12} /> Block</>}
                                                             </button>
@@ -348,6 +345,7 @@ export default function AdminManagement() {
                                     )}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -383,8 +381,8 @@ export default function AdminManagement() {
                                     value={form.password}
                                     onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                                     placeholder="Min. 4 characters"
-                                    className="w-full border border-gray-200 px-3.5 py-2.5 pr-10 text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-[#b1835a] focus:ring-2 focus:ring-[#d8ab83]/25 transition"
-                                    style={{ borderRadius: '6px' }}
+                                    className="w-full border border-gray-200 px-3.5 py-2.5 pr-10 text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/15 transition"
+                                    style={{ borderRadius: '0' }}
                                     required
                                 />
                                 <button type="button" onClick={() => setShowPwd(v => !v)}
@@ -398,14 +396,14 @@ export default function AdminManagement() {
                             <select
                                 value={form.role}
                                 onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                                className="w-full border border-gray-200 px-3.5 py-2.5 text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-[#b1835a] focus:ring-2 focus:ring-[#d8ab83]/25 transition"
-                                style={{ borderRadius: '6px' }}>
+                                className="w-full border border-gray-200 px-3.5 py-2.5 text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/15 transition"
+                                style={{ borderRadius: '0' }}>
                                 <option value="admin">Admin — Standard access</option>
                                 <option value="super_admin">Super Admin — Full access</option>
                             </select>
                         </div>
                         {formErr && (
-                            <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2.5" style={{ borderRadius: '6px' }}>
+                            <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2.5" style={{ borderRadius: '0' }}>
                                 <AlertTriangle size={13} className="shrink-0" /> {formErr}
                             </div>
                         )}
@@ -414,7 +412,7 @@ export default function AdminManagement() {
                 <AppModal.Footer>
                     <ModalBtn variant="secondary" type="button" onClick={() => { setShowCreate(false); setFormErr(''); }}>Cancel</ModalBtn>
                     <ModalBtn variant="brand" type="submit" form="create-admin-form" disabled={submitting}
-                        className="flex items-center gap-1.5" style={{ background: BRAND }}>
+                        className="flex items-center gap-1.5" style={{ background: G }}>
                         <UserPlus size={13} />
                         {submitting ? 'Creating…' : 'Create Admin'}
                     </ModalBtn>
@@ -443,7 +441,7 @@ export default function AdminManagement() {
                                     onChange={e => setNewPwd(e.target.value)}
                                     placeholder="Min. 4 characters"
                                     className="w-full border border-gray-200 px-3.5 py-2.5 pr-10 text-sm bg-gray-50 focus:bg-white focus:outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-[#4f46e5]/20 transition"
-                                    style={{ borderRadius: '6px' }}
+                                    style={{ borderRadius: '0' }}
                                     autoFocus
                                     required
                                 />
@@ -454,7 +452,7 @@ export default function AdminManagement() {
                             </div>
                         </div>
                         {pwdErr && (
-                            <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2.5" style={{ borderRadius: '6px' }}>
+                            <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2.5" style={{ borderRadius: '0' }}>
                                 <AlertTriangle size={13} className="shrink-0" /> {pwdErr}
                             </div>
                         )}

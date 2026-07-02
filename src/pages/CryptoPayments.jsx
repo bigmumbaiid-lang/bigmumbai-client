@@ -4,18 +4,19 @@ import api from '../utils/axios';
 import DateRangePicker from '../components/DateRangePicker';
 import {
     Search, RefreshCw, Download, ChevronLeft, ChevronRight,
-    TrendingUp, Clock, CheckCircle, Coins, X,
+    TrendingUp, Clock, CheckCircle, ArrowDownToLine, X, Copy, Check,
 } from 'lucide-react';
+import Select from '../components/Select';
 
-const USDT_COLOR = '#26a17b';
-const TRX_COLOR  = '#1d4ed8';
-const BRAND      = 'linear-gradient(90deg,#d9ad82,#b1835a)';
+const G   = '#3a7d44';
+const GL  = '#e8f5ea';
+const GH  = '#2e6437';
 
-const STATUS_COLOR = {
-    completed: 'bg-emerald-100 text-emerald-700',
-    pending:   'bg-amber-100 text-amber-700',
-    expired:   'bg-gray-100 text-gray-500',
-    cancelled: 'bg-gray-100 text-gray-400',
+const STATUS_CFG = {
+    completed: { bg: '#dcfce7', color: '#15803d' },
+    pending:   { bg: '#fef9c3', color: '#a16207' },
+    expired:   { bg: '#f3f4f6', color: '#6b7280' },
+    cancelled: { bg: '#f3f4f6', color: '#9ca3af' },
 };
 
 const inr = (n) =>
@@ -30,7 +31,8 @@ const DATE_PRESETS = [
     { key: 'today',  label: 'Today' },
     { key: 'last7',  label: 'Last 7 Days' },
     { key: 'last30', label: 'Last 30 Days' },
-    { key: 'custom', label: 'Custom' },
+    { key: 'all',    label: 'All time' },
+    { key: 'custom', label: 'Custom Range' },
 ];
 
 function getPresetRange(key) {
@@ -40,90 +42,140 @@ function getPresetRange(key) {
     return { from: '', to: '' };
 }
 
-const StatCard = ({ label, value, sub, accent, icon: Icon, iconBg, iconColor }) => (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(17,24,39,0.06)] p-5 hover:shadow-[0_8px_24px_rgba(17,24,39,0.08)] hover:-translate-y-0.5 transition-all duration-200">
-        <div className="flex items-start justify-between">
-            <div className="min-w-0">
-                <p className="text-[13px] text-gray-500 font-medium">{label}</p>
-                <p className={`text-[26px] leading-tight font-bold mt-2 tracking-tight ${accent || 'text-gray-900'}`}>{value}</p>
-                {sub && <p className="text-xs text-gray-400 mt-2">{sub}</p>}
-            </div>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: iconBg }}>
-                <Icon size={21} style={{ color: iconColor }} strokeWidth={2.2} />
-            </div>
+const inputCls =
+    'w-full border border-gray-300 bg-white text-sm text-gray-800 px-3 py-2 focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/15 transition placeholder:text-gray-400';
+
+const StatCard = ({ label, value, sub, valueColor = '#111827', icon: Icon, iconBg, iconColor }) => (
+    <div className="bg-white border border-gray-200 p-3 md:p-5 flex items-start justify-between hover:border-[#3a7d44]/40 transition-colors">
+        <div className="min-w-0 mr-2">
+            <p className="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 md:mb-2 leading-tight">{label}</p>
+            <p className="text-lg md:text-2xl font-bold leading-none tracking-tight" style={{ color: valueColor }}>{value}</p>
+            {sub && <p className="text-[10px] md:text-xs text-gray-400 mt-1 md:mt-2 leading-tight">{sub}</p>}
+        </div>
+        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+            <Icon size={16} style={{ color: iconColor }} strokeWidth={2.2} />
         </div>
     </div>
 );
 
 export default function CryptoPayments() {
-    const [tab, setTab]         = useState('usdt');
-    const [deposits, setDeposits] = useState([]);
-    const [summary, setSummary]   = useState(null);
-    const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
-    const [loading, setLoading]   = useState(false);
-    const [page, setPage]         = useState(1);
+    const [copied, setCopied] = useState('');
+    const copyText = (text, key) => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500); });
+        } else {
+            const el = document.createElement('textarea');
+            el.value = text; el.style.position = 'fixed'; el.style.opacity = '0';
+            document.body.appendChild(el); el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            setCopied(key); setTimeout(() => setCopied(''), 1500);
+        }
+    };
+
+    const [coinType, setCoinType]       = useState('all');
+    const [deposits, setDeposits]       = useState([]);
+    const [summary, setSummary]         = useState(null);
+    const [pagination, setPagination]   = useState({ page: 1, pages: 1, total: 0 });
+    const [loading, setLoading]         = useState(false);
+    const [page, setPage]               = useState(1);
     const limit = 20;
 
     const [datePreset,     setDatePreset]     = useState('today');
     const [fromDate,       setFromDate]       = useState(() => getISTDate(0));
     const [toDate,         setToDate]         = useState(() => getISTDate(0));
     const [statusFilter,   setStatusFilter]   = useState('');
-    const [usernameSearch, setUsernameSearch] = useState('');
-    const [addressSearch,  setAddressSearch]  = useState('');
-
-    const isUsdt       = tab === 'usdt';
-    const accentColor  = isUsdt ? USDT_COLOR : TRX_COLOR;
-    const endpoint     = isUsdt ? '/usdt/admin/all' : '/trx/admin/all';
+    const [unifiedSearch,  setUnifiedSearch]  = useState('');
 
     const fetchDeposits = useCallback(async () => {
         try {
             setLoading(true);
             const params = { page, limit };
-            if (statusFilter)          params.status  = statusFilter;
-            if (usernameSearch.trim()) params.search  = usernameSearch.trim();
-            if (addressSearch.trim())  params.address = addressSearch.trim();
+            if (statusFilter)            params.status = statusFilter;
+            if (unifiedSearch.trim())    params.q      = unifiedSearch.trim();
             if (fromDate) params.from = fromDate;
             if (toDate)   params.to   = toDate;
 
-            const { data } = await api.get(endpoint, { params });
-            if (data.success) {
-                setDeposits(data.deposits || []);
-                setSummary(data.summary   || null);
-                setPagination(data.pagination || { page: 1, pages: 1, total: 0 });
+            if (coinType === 'all') {
+                const [usdtRes, trxRes] = await Promise.all([
+                    api.get('/usdt/admin/all', { params }),
+                    api.get('/trx/admin/all',  { params }),
+                ]);
+                const ud = usdtRes.data;
+                const td = trxRes.data;
+
+                // Merge deposits, tag each with its type, sort newest first
+                const combined = [
+                    ...(ud.deposits || []).map(d => ({ ...d, _coin: 'USDT' })),
+                    ...(td.deposits || []).map(d => ({ ...d, _coin: 'TRX'  })),
+                ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                setDeposits(combined);
+
+                // Merge summaries
+                const us = ud.summary || {};
+                const ts = td.summary || {};
+                setSummary({
+                    totalInr:  (us.totalInr  || 0) + (ts.totalInr  || 0),
+                    totalUsdt: us.totalUsdt || 0,
+                    totalTrx:  ts.totalTrx  || 0,
+                    completed: (us.completed || 0) + (ts.completed || 0),
+                    pending:   (us.pending   || 0) + (ts.pending   || 0),
+                    expired:   (us.expired   || 0) + (ts.expired   || 0),
+                    cancelled: (us.cancelled || 0) + (ts.cancelled || 0),
+                    total:     (us.total     || 0) + (ts.total     || 0),
+                });
+
+                const up = ud.pagination || {};
+                const tp = td.pagination || {};
+                setPagination({
+                    page,
+                    pages: Math.max(up.pages || 1, tp.pages || 1),
+                    total: (up.total || 0) + (tp.total || 0),
+                });
+            } else {
+                const endpoint = coinType === 'usdt' ? '/usdt/admin/all' : '/trx/admin/all';
+                const { data } = await api.get(endpoint, { params });
+                if (data.success) {
+                    setDeposits((data.deposits || []).map(d => ({ ...d, _coin: coinType.toUpperCase() })));
+                    setSummary(data.summary || null);
+                    setPagination(data.pagination || { page: 1, pages: 1, total: 0 });
+                }
             }
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [endpoint, page, statusFilter, usernameSearch, addressSearch, fromDate, toDate]);
+    }, [coinType, page, statusFilter, unifiedSearch, fromDate, toDate]);
 
-    // Reset page when filters or tab change
-    useEffect(() => { setPage(1); }, [tab, statusFilter, usernameSearch, addressSearch, fromDate, toDate]);
-
+    useEffect(() => { setPage(1); }, [coinType, statusFilter, unifiedSearch, fromDate, toDate]);
     useEffect(() => { fetchDeposits(); }, [fetchDeposits]);
 
     const applyPreset = (key) => {
         setDatePreset(key);
-        const range = getPresetRange(key);
-        setFromDate(range.from);
-        setToDate(range.to);
+        if (key !== 'custom') {
+            const range = getPresetRange(key);
+            setFromDate(range.from);
+            setToDate(range.to);
+        }
         setPage(1);
     };
 
     const resetFilters = () => {
-        setStatusFilter(''); setUsernameSearch(''); setAddressSearch('');
+        setStatusFilter(''); setUnifiedSearch('');
+        setCoinType('all');
         applyPreset('today');
     };
 
     const exportCSV = () => {
         if (!deposits.length) return;
-        const header = ['Order ID', 'User', 'INR Amount', isUsdt ? 'USDT Amount' : 'TRX Amount', 'Status', 'Deposit Address', 'Tx ID', 'Date (IST)'];
+        const header = ['Coin', 'Order ID', 'User', 'INR Amount', 'Crypto Amount', 'Status', 'Deposit Address', 'Tx ID', 'Date (IST)'];
         const rows = deposits.map(d => [
+            d._coin,
             d._id,
             d.user?.username || 'N/A',
             d.inrAmount,
-            isUsdt ? (d.expectedUsdtAmount || '') : (d.expectedTrxAmount || ''),
+            d._coin === 'USDT' ? (d.expectedUsdtAmount || '') : (d.expectedTrxAmount || ''),
             d.status,
             d.depositAddress || '',
             d.txId || '',
@@ -131,106 +183,108 @@ export default function CryptoPayments() {
         ]);
         const csv = [header, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
         const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-        const a = document.createElement('a'); a.href = url; a.download = `${tab}-payments.csv`; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = `crypto-payments.csv`; a.click();
         URL.revokeObjectURL(url);
     };
 
     const successRate = summary
         ? Math.round(((summary.completed || 0) / Math.max(summary.total || 1, 1)) * 100)
         : 0;
-    const cryptoTotal = isUsdt ? (summary?.totalUsdt || 0) : (summary?.totalTrx || 0);
-    const cryptoSymbol = isUsdt ? 'USDT' : 'TRX';
+
+    const cryptoSymbol  = coinType === 'trx' ? 'TRX' : 'USDT';
+    const cryptoReceived = coinType === 'trx'
+        ? parseFloat(Number(summary?.totalTrx  || 0).toFixed(4))
+        : parseFloat(Number(summary?.totalUsdt || 0).toFixed(4));
 
     return (
-        <div className="flex h-screen bg-[#f6f7fb]">
+        <div className="flex h-screen" style={{ background: '#f4f7f4' }}>
             <Sidebar />
             <main className="flex-1 overflow-auto">
+
                 {/* Header */}
-                <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Crypto Payments</h1>
-                        <p className="text-xs text-gray-400 mt-0.5">USDT &amp; TRX deposit transaction history</p>
+                <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between md:sticky md:top-0 z-10">
+                    <div className="min-w-0 mr-3">
+                        <h1 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">Crypto Payments</h1>
+                        <p className="text-xs text-gray-400 mt-0.5 hidden md:block">USDT &amp; TRX deposit transaction history</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                         <button
                             onClick={fetchDeposits} disabled={loading}
-                            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+                            className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition disabled:opacity-50 whitespace-nowrap"
                         >
-                            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
+                            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
                         </button>
                         <button
                             onClick={exportCSV}
-                            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-white text-sm font-semibold shadow-sm active:scale-95 transition"
-                            style={{ background: BRAND }}
+                            className="flex items-center gap-2 px-3 md:px-4 py-2 text-white text-sm font-semibold transition active:opacity-90 whitespace-nowrap"
+                            style={{ background: G }}
+                            onMouseEnter={e => e.currentTarget.style.background = GH}
+                            onMouseLeave={e => e.currentTarget.style.background = G}
                         >
-                            <Download size={15} /> Export CSV
+                            <Download size={14} /> Export CSV
                         </button>
                     </div>
                 </header>
 
-                <div className="p-6 lg:p-8">
-                    {/* Tabs */}
-                    <div className="flex gap-1 p-1 bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(17,24,39,0.06)] mb-6 w-fit">
-                        {[
-                            { key: 'usdt', label: 'USDT TRC20', color: USDT_COLOR },
-                            { key: 'trx',  label: 'TRX TRC20',  color: TRX_COLOR  },
-                        ].map(({ key, label, color }) => (
-                            <button
-                                key={key}
-                                onClick={() => setTab(key)}
-                                className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${tab === key ? 'text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                style={tab === key ? { background: color } : {}}
-                            >
-                                {label}
-                            </button>
-                        ))}
-                    </div>
+                <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-5">
 
-                    {/* Stats */}
+                    {/* Stat cards */}
                     {summary && (
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                             <StatCard
                                 label="Total Recharged (INR)"
                                 value={inr(summary.totalInr)}
                                 sub={`${summary.completed || 0} successful orders`}
-                                accent="text-emerald-600"
-                                icon={TrendingUp} iconColor="#059669" iconBg="#ecfdf5"
+                                valueColor="#15803d"
+                                icon={TrendingUp} iconColor={G} iconBg={GL}
                             />
                             <StatCard
-                                label={`${cryptoSymbol} Received`}
-                                value={`${parseFloat(Number(cryptoTotal).toFixed(4))} ${cryptoSymbol}`}
-                                sub={`across ${summary.total || 0} total orders`}
-                                icon={Coins} iconColor={accentColor}
-                                iconBg={isUsdt ? '#ecfdf5' : '#eff6ff'}
-                            />
-                            <StatCard
-                                label="Pending / Expired"
-                                value={summary.pending || 0}
-                                sub={`${summary.expired || 0} expired`}
-                                accent="text-amber-600"
-                                icon={Clock} iconColor="#d97706" iconBg="#fffbeb"
+                                label="Pending / Expired / Cancelled"
+                                value={(summary.pending || 0) + (summary.expired || 0) + (summary.cancelled || 0)}
+                                sub={`${summary.pending || 0} pending · ${summary.expired || 0} expired · ${summary.cancelled || 0} cancelled`}
+                                valueColor="#a16207"
+                                icon={Clock} iconColor="#d97706" iconBg="#fef9c3"
                             />
                             <StatCard
                                 label="Success Rate"
                                 value={`${successRate}%`}
                                 sub={`${summary.completed || 0} of ${summary.total || 0} completed`}
-                                accent={successRate >= 50 ? 'text-emerald-600' : 'text-rose-600'}
+                                valueColor={successRate >= 50 ? '#15803d' : '#be123c'}
                                 icon={CheckCircle}
-                                iconColor={successRate >= 50 ? '#059669' : '#e11d48'}
-                                iconBg={successRate >= 50 ? '#ecfdf5' : '#fff1f2'}
+                                iconColor={successRate >= 50 ? G : '#e11d48'}
+                                iconBg={successRate >= 50 ? GL : '#fff1f2'}
                             />
                         </div>
                     )}
 
-                    {/* Filters */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(17,24,39,0.06)] p-4 mb-6">
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {/* Filter panel */}
+                    <div className="bg-white border border-gray-200">
+
+                        {/* Row 1 — search */}
+                        <div className="p-4 border-b border-gray-100">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by exact username or full deposit address…"
+                                    value={unifiedSearch}
+                                    onChange={(e) => { setUnifiedSearch(e.target.value); setPage(1); }}
+                                    className={inputCls + ' w-full pl-9'}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Row 2 — date presets (scrollable on mobile) */}
+                        <div className="px-4 pt-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
+                            <span className="text-xs text-gray-400 font-medium shrink-0">Date:</span>
                             {DATE_PRESETS.map(({ key, label }) => (
                                 <button
                                     key={key}
                                     onClick={() => applyPreset(key)}
-                                    className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${datePreset === key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                                    style={datePreset === key ? { background: BRAND } : {}}
+                                    className="px-3 py-1.5 text-sm font-medium border transition shrink-0"
+                                    style={datePreset === key
+                                        ? { background: G, color: '#fff', borderColor: G }
+                                        : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}
                                 >
                                     {label}
                                 </button>
@@ -242,113 +296,132 @@ export default function CryptoPayments() {
                                     placeholder="Pick date range"
                                 />
                             )}
-                            <select
+                        </div>
+
+                        {/* Row 3 — coin + status + reset */}
+                        <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
+                            <Select
+                                value={coinType}
+                                onChange={(v) => { setCoinType(v); setPage(1); }}
+                                options={[
+                                    { value: 'all',  label: 'All Coins'  },
+                                    { value: 'usdt', label: 'USDT TRC20' },
+                                    { value: 'trx',  label: 'TRX TRC20'  },
+                                ]}
+                            />
+                            <Select
                                 value={statusFilter}
-                                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                                className="px-4 py-2 border border-gray-200 rounded-xl bg-white text-sm text-gray-700 focus:outline-none focus:border-[#b1835a]"
-                            >
-                                <option value="">All Status</option>
-                                <option value="completed">Completed</option>
-                                <option value="pending">Pending</option>
-                                <option value="expired">Expired</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
+                                onChange={(v) => { setStatusFilter(v); setPage(1); }}
+                                options={[
+                                    { value: '',          label: 'All Status' },
+                                    { value: 'completed', label: 'Completed'  },
+                                    { value: 'pending',   label: 'Pending'    },
+                                    { value: 'expired',   label: 'Expired'    },
+                                    { value: 'cancelled', label: 'Cancelled'  },
+                                ]}
+                            />
                             <button
                                 onClick={resetFilters}
-                                className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 rounded-xl text-sm text-gray-500 hover:bg-gray-50 transition"
+                                className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-sm text-gray-500 hover:bg-gray-50 transition whitespace-nowrap"
                             >
-                                <X size={14} /> Reset
+                                <X size={13} /> Reset
                             </button>
-                        </div>
-                        <div className="flex gap-3">
-                            <div className="relative flex-1">
-                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text" placeholder="Exact username..."
-                                    value={usernameSearch}
-                                    onChange={(e) => { setUsernameSearch(e.target.value); setPage(1); }}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a] transition"
-                                />
-                            </div>
-                            <div className="relative flex-1">
-                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text" placeholder="Deposit address..."
-                                    value={addressSearch}
-                                    onChange={(e) => { setAddressSearch(e.target.value); setPage(1); }}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a] transition"
-                                />
-                            </div>
                         </div>
                     </div>
 
                     {/* Table */}
-                    <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(17,24,39,0.06)] border border-gray-100 overflow-hidden">
+                    <div className="bg-white border border-gray-200 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
-                                        <th className="px-5 py-3.5 text-left font-semibold">Order ID</th>
-                                        <th className="px-5 py-3.5 text-left font-semibold">User</th>
-                                        <th className="px-5 py-3.5 text-right font-semibold">INR Amount</th>
-                                        <th className="px-5 py-3.5 text-right font-semibold">{cryptoSymbol} Amount</th>
-                                        <th className="px-5 py-3.5 text-left font-semibold">Status</th>
-                                        <th className="px-5 py-3.5 text-left font-semibold">Deposit Address</th>
-                                        <th className="px-5 py-3.5 text-left font-semibold">Date (IST)</th>
+                                    <tr style={{ background: GL }}>
+                                        {['Order ID', 'Coin', 'User', 'INR Amount', 'Crypto Amount', 'Status', 'Deposit Address', 'Date (IST)'].map(h => (
+                                            <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: G }}>
+                                                {h}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="divide-y divide-gray-100">
                                     {loading ? (
                                         [...Array(6)].map((_, i) => (
                                             <tr key={i}>
-                                                <td colSpan={7} className="px-5 py-3.5">
-                                                    <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                                                <td colSpan={8} className="px-5 py-3">
+                                                    <div className="h-4 bg-gray-100 animate-pulse" />
                                                 </td>
                                             </tr>
                                         ))
                                     ) : deposits.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="py-16 text-center">
-                                                <Coins size={40} className="mx-auto text-gray-300 mb-3" />
-                                                <p className="text-gray-500 font-medium">No {cryptoSymbol} deposits found</p>
+                                            <td colSpan={8} className="py-16 text-center">
+                                                <ArrowDownToLine size={36} className="mx-auto text-gray-300 mb-3" />
+                                                <p className="text-gray-500 font-medium">No deposits found</p>
                                             </td>
                                         </tr>
                                     ) : deposits.map((d) => {
-                                        const badge      = STATUS_COLOR[d.status] || 'bg-gray-100 text-gray-500';
-                                        const cryptoAmt  = isUsdt ? d.expectedUsdtAmount : d.expectedTrxAmount;
-                                        const shortAddr  = d.depositAddress
+                                        const cfg       = STATUS_CFG[d.status] || { bg: '#f3f4f6', color: '#6b7280' };
+                                        const cryptoAmt = d._coin === 'USDT' ? d.expectedUsdtAmount : d.expectedTrxAmount;
+                                        const shortAddr = d.depositAddress
                                             ? `${d.depositAddress.slice(0, 8)}…${d.depositAddress.slice(-6)}`
                                             : '—';
+                                        const coinBg    = d._coin === 'USDT' ? '#ecfdf5' : '#eff6ff';
+                                        const coinColor = d._coin === 'USDT' ? '#059669' : '#2563eb';
                                         return (
-                                            <tr key={d._id} className="hover:bg-gray-50/60">
-                                                <td className="px-5 py-3.5 font-mono text-xs text-gray-400 whitespace-nowrap">
-                                                    …{String(d._id).slice(-10)}
+                                            <tr key={d._id + d._coin} className="hover:bg-[#f9fbf9]">
+                                                <td className="px-5 py-3 whitespace-nowrap">
+                                                    <button
+                                                        onClick={() => copyText(String(d._id), `id-${d._id}`)}
+                                                        className="flex items-center gap-1.5 font-mono text-xs text-gray-400 hover:text-gray-700 transition group"
+                                                        title={d._id}
+                                                    >
+                                                        …{String(d._id).slice(-10)}
+                                                        {copied === `id-${d._id}`
+                                                            ? <Check size={11} className="text-green-500" />
+                                                            : <Copy size={11} className="opacity-0 group-hover:opacity-100 transition" />}
+                                                    </button>
                                                 </td>
-                                                <td className="px-5 py-3.5 font-semibold text-gray-900 whitespace-nowrap">
+                                                <td className="px-5 py-3 whitespace-nowrap">
+                                                    <span
+                                                        className="inline-block px-2 py-0.5 text-xs font-semibold tracking-wide"
+                                                        style={{ background: coinBg, color: coinColor }}
+                                                    >
+                                                        {d._coin}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-3 font-semibold text-gray-900 whitespace-nowrap">
                                                     {d.user?.username || 'N/A'}
                                                 </td>
-                                                <td className="px-5 py-3.5 text-right font-mono font-semibold text-gray-900 whitespace-nowrap">
+                                                <td className="px-5 py-3 font-mono font-semibold text-gray-900 whitespace-nowrap">
                                                     {inr(d.inrAmount)}
                                                 </td>
-                                                <td className="px-5 py-3.5 text-right font-mono text-gray-700 whitespace-nowrap">
+                                                <td className="px-5 py-3 font-mono text-gray-700 whitespace-nowrap">
                                                     {cryptoAmt != null
-                                                        ? `${parseFloat(Number(cryptoAmt).toFixed(4))} ${cryptoSymbol}`
+                                                        ? `${parseFloat(Number(cryptoAmt).toFixed(4))} ${d._coin}`
                                                         : '—'}
                                                 </td>
-                                                <td className="px-5 py-3.5 whitespace-nowrap">
-                                                    <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${badge}`}>
+                                                <td className="px-5 py-3 whitespace-nowrap">
+                                                    <span
+                                                        className="inline-block px-2 py-0.5 text-xs font-semibold tracking-wide"
+                                                        style={{ background: cfg.bg, color: cfg.color }}
+                                                    >
                                                         {d.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-5 py-3.5 whitespace-nowrap">
-                                                    <span
-                                                        className="font-mono text-xs text-gray-500 cursor-default"
-                                                        title={d.depositAddress || ''}
-                                                    >
-                                                        {shortAddr}
-                                                    </span>
+                                                <td className="px-5 py-3 whitespace-nowrap">
+                                                    {d.depositAddress ? (
+                                                        <button
+                                                            onClick={() => copyText(d.depositAddress, `addr-${d._id}`)}
+                                                            className="flex items-center gap-1.5 font-mono text-xs text-gray-500 hover:text-gray-800 transition group"
+                                                            title={d.depositAddress}
+                                                        >
+                                                            {shortAddr}
+                                                            {copied === `addr-${d._id}`
+                                                                ? <Check size={11} className="text-green-500" />
+                                                                : <Copy size={11} className="opacity-0 group-hover:opacity-100 transition" />}
+                                                        </button>
+                                                    ) : <span className="text-gray-300 text-xs">—</span>}
                                                 </td>
-                                                <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap text-xs">
+                                                <td className="px-5 py-3 text-gray-500 whitespace-nowrap text-xs">
                                                     {new Date(d.createdAt).toLocaleString('en-US', {
                                                         timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
                                                         day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
@@ -362,33 +435,37 @@ export default function CryptoPayments() {
                         </div>
 
                         {/* Pagination */}
-                        <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100">
+                        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
                             <p className="text-sm text-gray-500">
                                 {pagination.total > 0
-                                    ? `Page ${page} of ${pagination.pages} · ${pagination.total} total`
+                                    ? `${pagination.total} total · page ${page} of ${pagination.pages}`
                                     : '—'}
                             </p>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                                 <button
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
-                                    className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                    className="px-3 py-1.5 border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
                                 >
-                                    <ChevronLeft size={17} />
+                                    <ChevronLeft size={15} />
                                 </button>
-                                <span className="px-2 text-sm font-medium text-gray-700">
+                                <span
+                                    className="px-3 py-1.5 text-sm font-semibold text-white"
+                                    style={{ background: G }}
+                                >
                                     Page {page} of {pagination.pages || 1}
                                 </span>
                                 <button
                                     onClick={() => setPage(p => Math.min(pagination.pages || 1, p + 1))}
                                     disabled={page >= (pagination.pages || 1)}
-                                    className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                    className="px-3 py-1.5 border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
                                 >
-                                    <ChevronRight size={17} />
+                                    <ChevronRight size={15} />
                                 </button>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </main>
         </div>

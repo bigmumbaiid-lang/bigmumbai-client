@@ -41,7 +41,7 @@ export default function AppModal({ onClose, onConfirm, children, size = 'md' }) 
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[72px] sm:p-4"
             style={{ background: 'rgba(148,163,184,0.5)', backdropFilter: 'blur(6px)' }}
             onClick={onClose}
         >
@@ -87,7 +87,7 @@ AppModal.Header = function AppModalHeader({ icon, title, subtitle, onClose, acce
 
 AppModal.Body = function AppModalBody({ children, className = '', noPad = false }) {
     return (
-        <div className={`${noPad ? '' : 'px-5 py-5'} overflow-y-auto max-h-[70vh] ${className}`}>
+        <div className={`${noPad ? '' : 'px-5 py-5'} overflow-y-auto max-h-[60vh] sm:max-h-[70vh] ${className}`}>
             {children}
         </div>
     );

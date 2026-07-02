@@ -13,23 +13,33 @@ export function useUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm);
 
+  const [filter, setFilter] = useState('all');
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [totalActive, setTotalActive] = useState(0);
+  const [totalBettingOn, setTotalBettingOn] = useState(0);
+  const [totalWithdrawalOn, setTotalWithdrawalOn] = useState(0);
 
   const fetchUsers = useCallback(
-    async (page = 1) => {
+    async (page = 1, overrideFilter) => {
       try {
         setLoading(true);
         setError(null);
+        const activeFilter = overrideFilter !== undefined ? overrideFilter : filter;
         const data = await usersApi.list({
           page,
           limit: USERS_PAGE_SIZE,
           search: debouncedSearch,
+          filter: activeFilter === 'all' ? '' : activeFilter,
         });
         setUsers(data.users || []);
         setTotalPages(data.totalPages || 1);
         setTotalUsers(data.totalUsers || 0);
+        setTotalActive(data.totalActive || 0);
+        setTotalBettingOn(data.totalBettingOn || 0);
+        setTotalWithdrawalOn(data.totalWithdrawalOn || 0);
         setCurrentPage(page);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch users');
@@ -37,11 +47,10 @@ export function useUsers() {
         setLoading(false);
       }
     },
-    [debouncedSearch]
+    [debouncedSearch, filter]
   );
 
-  // Reload from page 1 whenever the (debounced) search term changes,
-  // and once on mount.
+  // Reload from page 1 whenever search or filter changes.
   useEffect(() => {
     fetchUsers(1);
   }, [fetchUsers]);
@@ -53,6 +62,11 @@ export function useUsers() {
     },
     [fetchUsers, totalPages]
   );
+
+  const changeFilter = useCallback((newFilter) => {
+    setFilter(newFilter);
+    // fetchUsers will re-run via useEffect when filter changes
+  }, []);
 
   // Apply `changes` to a single user without a network round-trip.
   const updateUser = useCallback((userId, changes) => {
@@ -67,9 +81,14 @@ export function useUsers() {
     error,
     searchTerm,
     setSearchTerm,
+    filter,
+    changeFilter,
     currentPage,
     totalPages,
     totalUsers,
+    totalActive,
+    totalBettingOn,
+    totalWithdrawalOn,
     pageSize: USERS_PAGE_SIZE,
     fetchUsers,
     goToPage,

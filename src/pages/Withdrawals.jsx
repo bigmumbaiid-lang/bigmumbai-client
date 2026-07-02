@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import api from '../utils/axios';
 import { useNotify } from '../context/NotifyContext';
@@ -8,48 +8,76 @@ import {
   Search, X, CheckCircle, XCircle, Clock, RefreshCw, AlertTriangle,
   ChevronLeft, ChevronRight, Wallet, TrendingUp, Download,
 } from 'lucide-react';
+import Select from '../components/Select';
 
-const BRAND = 'linear-gradient(90deg,#d9ad82,#b1835a)';
+const G  = '#3a7d44';
+const GL = '#e8f5ea';
+const GH = '#2e6437';
+
 const inr = (n) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(n) || 0);
 
-const STATUS_CFG = {
-  pending:  { label: 'Pending',  cls: 'bg-amber-100 text-amber-700',    Icon: Clock },
-  approved: { label: 'Approved', cls: 'bg-blue-100 text-blue-700',       Icon: CheckCircle },
-  success:  { label: 'Success',  cls: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle },
-  failed:   { label: 'Failed',   cls: 'bg-rose-100 text-rose-700',       Icon: XCircle },
+const IST_OFFSET = 330 * 60000;
+const getISTDateStr = (offsetDays = 0) => {
+  const d = new Date(Date.now() + IST_OFFSET + offsetDays * 86400000);
+  return d.toISOString().split('T')[0];
 };
+
+const STATUS_CFG = {
+  pending:  { label: 'Pending',  bg: '#fef9c3', color: '#a16207', Icon: Clock        },
+  approved: { label: 'Approved', bg: '#eff6ff',  color: '#2563eb', Icon: CheckCircle  },
+  success:  { label: 'Success',  bg: GL,         color: G,         Icon: CheckCircle  },
+  failed:   { label: 'Failed',   bg: '#fff1f2',  color: '#be123c', Icon: XCircle      },
+};
+
+const inputCls =
+  'border border-gray-300 bg-white text-sm text-gray-800 px-3 py-2 focus:outline-none focus:border-[#3a7d44] focus:ring-2 focus:ring-[#3a7d44]/15 transition placeholder:text-gray-400';
+
+const DATE_PRESETS = [
+  { key: 'today',  label: 'Today',       fn: () => ({ from: getISTDateStr(0),  to: getISTDateStr(0)  }) },
+  { key: 'last7',  label: 'Last 7 Days', fn: () => ({ from: getISTDateStr(-6), to: getISTDateStr(0)  }) },
+  { key: 'last30', label: 'Last 30 Days',fn: () => ({ from: getISTDateStr(-29),to: getISTDateStr(0)  }) },
+  { key: 'all',    label: 'All time',    fn: () => ({ from: '',                to: ''                }) },
+  { key: 'custom', label: 'Custom Range',fn: null },
+];
+
+const StatCard = ({ label, value, sub, valueColor = '#111827', icon: Icon, iconBg, iconColor }) => (
+  <div className="bg-white border border-gray-200 p-5 flex items-start justify-between hover:border-[#3a7d44]/40 transition-colors">
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+      <p className="text-2xl font-bold leading-none tracking-tight" style={{ color: valueColor }}>{value}</p>
+      {sub && <p className="text-xs text-gray-400 mt-2">{sub}</p>}
+    </div>
+    <div className="w-10 h-10 flex items-center justify-center shrink-0" style={{ background: iconBg }}>
+      <Icon size={19} style={{ color: iconColor }} strokeWidth={2.2} />
+    </div>
+  </div>
+);
 
 export default function Withdrawals() {
   const notify = useNotify();
   const [withdrawals, setWithdrawals] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [stats, setStats]             = useState(null);
+  const [loading, setLoading]         = useState(false);
+  const [page, setPage]               = useState(1);
+  const [totalPages, setTotalPages]   = useState(1);
+  const [total, setTotal]             = useState(0);
 
   const [filterStatus, setFilterStatus] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [quickFilter, setQuickFilter] = useState('today');
-  const [minAmount, setMinAmount] = useState('');
-  const [maxAmount, setMaxAmount] = useState('');
+  const [searchInput, setSearchInput]   = useState('');
+  const [search, setSearch]             = useState('');
+  const [startDate, setStartDate]       = useState(() => getISTDateStr(0));
+  const [endDate, setEndDate]           = useState(() => getISTDateStr(0));
+  const [quickFilter, setQuickFilter]   = useState('today');
+  const [minAmount, setMinAmount]       = useState('');
+  const [maxAmount, setMaxAmount]       = useState('');
+
   const [actionLoading, setActionLoading] = useState(null);
   const [approveTarget, setApproveTarget] = useState(null);
-  const [rejectTarget, setRejectTarget] = useState(null);
-  const [rejectRemark, setRejectRemark] = useState('');
+  const [rejectTarget,  setRejectTarget]  = useState(null);
+  const [rejectRemark,  setRejectRemark]  = useState('');
 
   const limit = 20;
-  const fmt = (d) => d.toISOString().split('T')[0];
-
-  // Set Today filter on mount
-  useEffect(() => {
-    const t = fmt(new Date()); setStartDate(t); setEndDate(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const fetchWithdrawals = async () => {
     try {
@@ -57,11 +85,11 @@ export default function Withdrawals() {
       const params = {
         page, limit,
         ...(filterStatus && { status: filterStatus }),
-        ...(search && { search: search.trim() }),
-        ...(startDate && { startDate }),
-        ...(endDate && { endDate }),
-        ...(minAmount && { minAmount }),
-        ...(maxAmount && { maxAmount }),
+        ...(search       && { search: search.trim() }),
+        ...(startDate    && { startDate }),
+        ...(endDate      && { endDate }),
+        ...(minAmount    && { minAmount }),
+        ...(maxAmount    && { maxAmount }),
       };
       const { data } = await api.get('/withdrawal', { params });
       if (data.success) {
@@ -95,35 +123,34 @@ export default function Withdrawals() {
   }, [page, filterStatus, search, startDate, endDate, minAmount, maxAmount]);
 
   useEffect(() => { fetchStats(); }, []);
+  useEffect(() => { if (page > totalPages) setPage(totalPages || 1); }, [totalPages]); // eslint-disable-line
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages || 1);
-  }, [totalPages]); // eslint-disable-line
-
-  const setToday  = () => { const t = fmt(new Date()); setStartDate(t); setEndDate(t); setQuickFilter('today'); setPage(1); };
-  const setLast7  = () => { const n = new Date(); setStartDate(fmt(new Date(n - 6*86400000))); setEndDate(fmt(n)); setQuickFilter('last7'); setPage(1); };
-  const setLast30 = () => { const n = new Date(); setStartDate(fmt(new Date(n - 29*86400000))); setEndDate(fmt(n)); setQuickFilter('last30'); setPage(1); };
-  const resetFilters = () => {
-    setSearchInput(''); setSearch(''); setFilterStatus('');
-    setStartDate(''); setEndDate(''); setQuickFilter('');
-    setMinAmount(''); setMaxAmount(''); setPage(1);
+  const applyPreset = (key) => {
+    const preset = DATE_PRESETS.find(p => p.key === key);
+    setQuickFilter(key);
+    if (preset?.fn) {
+      const { from, to } = preset.fn();
+      setStartDate(from);
+      setEndDate(to);
+    }
+    setPage(1);
   };
 
-  const quickButtons = [
-    { label: 'Today',        key: 'today',  fn: setToday  },
-    { label: 'Last 7 Days',  key: 'last7',  fn: setLast7  },
-    { label: 'Last 30 Days', key: 'last30', fn: setLast30 },
-    { label: 'Custom',       key: 'custom', fn: () => setQuickFilter('custom') },
-  ];
+  const resetFilters = () => {
+    setSearchInput(''); setSearch(''); setFilterStatus('');
+    setMinAmount(''); setMaxAmount('');
+    applyPreset('today');
+  };
 
   const exportCsv = () => {
     if (!withdrawals.length) return;
-    const header = ['Username', 'Amount', 'Status', 'Account Holder', 'Account No', 'IFSC', 'Bank', 'Remark', 'Date'];
+    const header = ['Username', 'Amount', 'Status', 'Account Holder', 'Account No', 'IFSC', 'Bank', 'Remark', 'Watchpays ID', 'Date'];
     const rows = withdrawals.map((w) => [
       w.user?.username || 'unknown', w.amount, w.status,
       w.bankCard?.accountHolderName || '-', w.bankCard?.accountNumber || '-',
       w.bankCard?.ifscCode || '-', w.bankCard?.bankName || '-',
-      w.remark || '-', new Date(w.createdAt).toISOString(),
+      w.remark || '-', w.watchpaysTransactionId || '-',
+      new Date(w.createdAt).toISOString(),
     ]);
     const csv = [header, ...rows]
       .map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -162,107 +189,64 @@ export default function Withdrawals() {
     } finally { setActionLoading(null); }
   };
 
-  const StatCard = ({ label, value, sub, accent = 'text-gray-900', icon: Icon, iconColor, iconBg }) => (
-    <div className="group bg-white rounded-2xl shadow-[0_1px_3px_rgba(17,24,39,0.06)] border border-gray-100 p-5 hover:shadow-[0_8px_24px_rgba(17,24,39,0.08)] hover:-translate-y-0.5 transition-all duration-200">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-[13px] text-gray-500 font-medium">{label}</p>
-          <p className={`text-[26px] leading-tight font-bold mt-2 tracking-tight ${accent}`}>{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-2">{sub}</p>}
-        </div>
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
-          style={{ background: iconBg }}
-        >
-          <Icon size={21} style={{ color: iconColor }} strokeWidth={2.2} />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="flex h-screen bg-[#f6f7fb]">
+    <div className="flex h-screen" style={{ background: '#f4f7f4' }}>
       <Sidebar />
       <main className="flex-1 overflow-auto">
+
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 pl-14 pr-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Withdrawals</h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Withdrawals</h1>
             <p className="text-xs text-gray-400 mt-0.5">Manage and process withdrawal requests</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { fetchWithdrawals(); fetchStats(); }} disabled={loading}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition disabled:opacity-50"
             >
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
             </button>
             <button
               onClick={exportCsv}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-white text-sm font-semibold shadow-sm active:scale-95 transition"
-              style={{ background: BRAND }}
+              className="flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold transition active:opacity-90"
+              style={{ background: G }}
+              onMouseEnter={e => e.currentTarget.style.background = GH}
+              onMouseLeave={e => e.currentTarget.style.background = G}
             >
-              <Download size={15} /> Export
+              <Download size={14} /> Export
             </button>
           </div>
         </header>
 
-        <div className="p-6 lg:p-8">
-          {/* Stats */}
+        <div className="p-6 lg:p-8 space-y-5">
+
+          {/* Stat cards */}
           {stats && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-              <StatCard label="Pending Payout" value={inr(stats.pending.total)} sub={`${stats.pending.count} request(s)`} accent="text-amber-600" icon={Clock} iconColor="#d97706" iconBg="#fffbeb" />
-              <StatCard label="Approved" value={inr(stats.approved.total)} sub={`${stats.approved.count} in flight`} accent="text-blue-600" icon={CheckCircle} iconColor="#2563eb" iconBg="#eff6ff" />
-              <StatCard label="Paid Out" value={inr(stats.success.total)} sub={`${stats.success.count} successful`} accent="text-emerald-600" icon={TrendingUp} iconColor="#059669" iconBg="#ecfdf5" />
-              <StatCard label="Failed / Refunded" value={inr(stats.failed.total)} sub={`${stats.failed.count} request(s)`} accent="text-rose-600" icon={XCircle} iconColor="#e11d48" iconBg="#fff1f2" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              <StatCard label="Pending Payout"   value={inr(stats.pending.total)}  sub={`${stats.pending.count} request(s)`}  valueColor="#a16207" icon={Clock}        iconColor="#d97706" iconBg="#fef9c3" />
+              <StatCard label="Approved"          value={inr(stats.approved.total)} sub={`${stats.approved.count} in flight`}  valueColor="#2563eb" icon={CheckCircle}  iconColor="#2563eb" iconBg="#eff6ff" />
+              <StatCard label="Paid Out"          value={inr(stats.success.total)}  sub={`${stats.success.count} successful`}  valueColor="#15803d" icon={TrendingUp}   iconColor={G}       iconBg={GL}      />
+              <StatCard label="Failed / Refunded" value={inr(stats.failed.total)}   sub={`${stats.failed.count} request(s)`}  valueColor="#be123c" icon={XCircle}      iconColor="#e11d48" iconBg="#fff1f2" />
             </div>
           )}
 
-          {/* Filters */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(17,24,39,0.06)] p-4 mb-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex-1 min-w-[240px] relative">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text" placeholder="Search username or remark..." value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a] focus:ring-2 focus:ring-[#d8ab83]/25 transition"
-                />
-              </div>
-              <select
-                value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-                className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-700 focus:outline-none focus:border-[#b1835a]"
-              >
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="success">Success</option>
-                <option value="failed">Failed</option>
-              </select>
-              <div className="flex items-center gap-2">
-                <input type="number" placeholder="Min ₹" value={minAmount}
-                  onChange={(e) => { setMinAmount(e.target.value); setPage(1); }}
-                  className="w-24 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]" />
-                <span className="text-gray-400">–</span>
-                <input type="number" placeholder="Max ₹" value={maxAmount}
-                  onChange={(e) => { setMaxAmount(e.target.value); setPage(1); }}
-                  className="w-24 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#b1835a]" />
-              </div>
-              <button
-                onClick={resetFilters}
-                className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition"
-              >
-                <X size={15} /> Reset
-              </button>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-              {quickButtons.map((btn) => (
+          {/* Filter panel */}
+          <div className="bg-white border border-gray-200">
+
+            {/* Row 1 — date + status + amount + reset */}
+            <div className="p-4 flex flex-wrap items-center gap-2 border-b border-gray-100">
+              <span className="text-xs text-gray-400 font-medium mr-1">Date:</span>
+              {DATE_PRESETS.map(({ key, label }) => (
                 <button
-                  key={btn.key} onClick={btn.fn}
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${quickFilter === btn.key ? 'text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                  style={quickFilter === btn.key ? { background: BRAND } : undefined}
+                  key={key}
+                  onClick={() => applyPreset(key)}
+                  className="px-3 py-1.5 text-sm font-medium border transition"
+                  style={quickFilter === key
+                    ? { background: G, color: '#fff', borderColor: G }
+                    : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}
                 >
-                  {btn.label}
+                  {label}
                 </button>
               ))}
               {quickFilter === 'custom' && (
@@ -272,120 +256,169 @@ export default function Withdrawals() {
                   placeholder="Pick date range"
                 />
               )}
+
+              {/* Status */}
+              <Select
+                value={filterStatus}
+                onChange={(v) => { setFilterStatus(v); setPage(1); }}
+                options={[
+                  { value: '',         label: 'All Status' },
+                  { value: 'pending',  label: 'Pending'    },
+                  { value: 'approved', label: 'Approved'   },
+                  { value: 'success',  label: 'Success'    },
+                  { value: 'failed',   label: 'Failed'     },
+                ]}
+              />
+
+              {/* Amount range */}
+              <div className="flex items-center gap-1">
+                <input
+                  type="number" placeholder="Min ₹" value={minAmount}
+                  onChange={(e) => { setMinAmount(e.target.value); setPage(1); }}
+                  className={inputCls + ' w-24'}
+                />
+                <span className="text-gray-400 text-sm">—</span>
+                <input
+                  type="number" placeholder="Max ₹" value={maxAmount}
+                  onChange={(e) => { setMaxAmount(e.target.value); setPage(1); }}
+                  className={inputCls + ' w-24'}
+                />
+              </div>
+
+              <button
+                onClick={resetFilters}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-sm text-gray-500 hover:bg-gray-50 transition"
+              >
+                <X size={13} /> Reset
+              </button>
+            </div>
+
+            {/* Row 2 — search */}
+            <div className="p-4">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text" placeholder="Search username or remark..." value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className={inputCls + ' w-full pl-9'}
+                />
+              </div>
             </div>
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(17,24,39,0.06)] border border-gray-100 overflow-hidden">
+          <div className="bg-white border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1020px] text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
-                    <th className="px-5 py-3.5 text-left font-semibold">Username</th>
-                    <th className="px-5 py-3.5 text-right font-semibold">Amount</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Status</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Bank Details</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Remark</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Watchpays ID</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Date (IST)</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Actions</th>
+                  <tr style={{ background: GL }}>
+                    {['Username', 'Amount', 'Status', 'Bank Details', 'Remark', 'Watchpays ID', 'Date (IST)', 'Actions'].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: G }}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-100">
                   {loading ? (
                     [...Array(8)].map((_, i) => (
                       <tr key={i}>
-                        <td colSpan={8} className="px-5 py-3.5">
-                          <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                        <td colSpan={8} className="px-5 py-3">
+                          <div className="h-4 bg-gray-100 animate-pulse" />
                         </td>
                       </tr>
                     ))
                   ) : withdrawals.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-16 text-center">
-                        <Wallet size={40} className="mx-auto text-gray-300 mb-3" />
+                        <Wallet size={36} className="mx-auto text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No withdrawals found</p>
                       </td>
                     </tr>
-                  ) : (
-                    withdrawals.map((w) => {
-                      const sc = STATUS_CFG[w.status] || { label: w.status, cls: 'bg-gray-100 text-gray-700', Icon: Clock };
-                      const StatusIcon = sc.Icon;
-                      const isPending = w.status === 'pending';
-                      const busy = actionLoading === w._id;
-                      const bc = w.bankCard;
-                      return (
-                        <tr key={w._id} className="hover:bg-gray-50/60">
-                          <td className="px-5 py-3.5 font-semibold text-gray-900">@{w.user?.username || 'unknown'}</td>
-                          <td className="px-5 py-3.5 text-right font-mono font-bold text-gray-900 whitespace-nowrap">{inr(w.amount)}</td>
-                          <td className="px-5 py-3.5">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sc.cls}`}>
-                              <StatusIcon size={12} />{sc.label}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            {bc ? (
-                              <div>
-                                <p className="text-sm font-medium text-gray-800 leading-tight">{bc.accountHolderName}</p>
-                                <p className="text-xs text-gray-400 font-mono mt-0.5">{bc.accountNumber} · {bc.ifscCode}</p>
-                                <p className="text-xs text-gray-400">{bc.bankName}</p>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-xs">No bank card</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3.5 text-gray-500 max-w-[160px] truncate text-sm">{w.remark || '—'}</td>
-                          <td className="px-5 py-3.5 text-xs text-gray-400 font-mono">{w.watchpaysTransactionId || '—'}</td>
-                          <td className="px-5 py-3.5 text-gray-500 text-xs whitespace-nowrap">
-                            {new Date(w.createdAt).toLocaleString('en-US', {
-                              timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
-                              day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
-                            })}
-                          </td>
-                          <td className="px-5 py-3.5">
-                            {isPending ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => setApproveTarget(w)} disabled={busy}
-                                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-xs font-semibold flex items-center gap-1"
-                                >
-                                  <CheckCircle size={12} /> Approve
-                                </button>
-                                <button
-                                  onClick={() => { setRejectTarget(w); setRejectRemark(''); }} disabled={busy}
-                                  className="px-3 py-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 text-xs font-semibold flex items-center gap-1"
-                                >
-                                  <XCircle size={12} /> Reject
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-gray-300 text-xs">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
+                  ) : withdrawals.map((w) => {
+                    const sc  = STATUS_CFG[w.status] || { label: w.status, bg: '#f3f4f6', color: '#6b7280', Icon: Clock };
+                    const StatusIcon = sc.Icon;
+                    const isPending  = w.status === 'pending';
+                    const busy       = actionLoading === w._id;
+                    const bc         = w.bankCard;
+                    return (
+                      <tr key={w._id} className="hover:bg-[#f9fbf9]">
+                        <td className="px-5 py-3.5 font-semibold text-gray-900">@{w.user?.username || 'unknown'}</td>
+                        <td className="px-5 py-3.5 font-mono font-bold text-gray-900 whitespace-nowrap">{inr(w.amount)}</td>
+                        <td className="px-5 py-3.5">
+                          <span
+                            className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold tracking-wide"
+                            style={{ background: sc.bg, color: sc.color }}
+                          >
+                            <StatusIcon size={11} />{sc.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-sm text-gray-700">
+                          {bc ? bc.bankName || '—' : <span className="text-gray-400 text-xs">No bank card</span>}
+                        </td>
+                        <td className="px-5 py-3.5 text-gray-500 max-w-[160px] truncate text-sm">{w.remark || '—'}</td>
+                        <td className="px-5 py-3.5 text-xs text-gray-400 font-mono">{w.watchpaysTransactionId || '—'}</td>
+                        <td className="px-5 py-3.5 text-gray-500 text-xs whitespace-nowrap">
+                          {new Date(w.createdAt).toLocaleString('en-US', {
+                            timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
+                            day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
+                          })}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {isPending ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setApproveTarget(w)} disabled={busy}
+                                className="px-3 py-1.5 text-white text-xs font-semibold flex items-center gap-1 disabled:opacity-50 transition"
+                                style={{ background: G }}
+                                onMouseEnter={e => !busy && (e.currentTarget.style.background = GH)}
+                                onMouseLeave={e => !busy && (e.currentTarget.style.background = G)}
+                              >
+                                <CheckCircle size={12} /> Approve
+                              </button>
+                              <button
+                                onClick={() => { setRejectTarget(w); setRejectRemark(''); }} disabled={busy}
+                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center gap-1 disabled:opacity-50 transition"
+                              >
+                                <XCircle size={12} /> Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100">
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
               <p className="text-sm text-gray-500">
-                {total > 0 ? `Showing page ${page} of ${totalPages} · ${total} total` : '—'}
+                {total > 0 ? `${total} total · page ${page} of ${totalPages}` : '—'}
               </p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                  className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">
-                  <ChevronLeft size={17} />
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                  className="px-3 py-1.5 border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
+                >
+                  <ChevronLeft size={15} />
                 </button>
-                <span className="px-2 text-sm font-medium text-gray-700">Page {page} of {totalPages}</span>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-                  className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40">
-                  <ChevronRight size={17} />
+                <span className="px-3 py-1.5 text-sm font-semibold text-white" style={{ background: G }}>
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                  className="px-3 py-1.5 border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
+                >
+                  <ChevronRight size={15} />
                 </button>
               </div>
             </div>
           </div>
+
         </div>
       </main>
 
@@ -394,7 +427,7 @@ export default function Withdrawals() {
         <AppModal onClose={() => !actionLoading && setApproveTarget(null)} onConfirm={doApprove} size="md">
           <AppModal.Header icon={<CheckCircle size={16} />} title="Approve Withdrawal" subtitle="Real payout via Watchpays — verify details below" onClose={() => !actionLoading && setApproveTarget(null)} accent="emerald" />
           <AppModal.Body>
-            <div className="border border-gray-100 divide-y divide-gray-50 bg-gray-50/50" style={{ borderRadius: '6px' }}>
+            <div className="border border-gray-100 divide-y divide-gray-50 bg-gray-50/50">
               {[
                 ['User',           `@${approveTarget.user?.username || 'unknown'}`],
                 ['Amount',         inr(approveTarget.amount)],
@@ -424,13 +457,9 @@ export default function Withdrawals() {
         <AppModal onClose={() => !actionLoading && setRejectTarget(null)} size="sm">
           <AppModal.Header icon={<AlertTriangle size={16} />} title="Reject Withdrawal" subtitle={`@${rejectTarget.user?.username} · ${inr(rejectTarget.amount)}`} onClose={() => !actionLoading && setRejectTarget(null)} accent="rose" />
           <AppModal.Body>
-            <p className="text-sm text-gray-500 mb-4">
-              The amount will be refunded to the user's balance.
-            </p>
+            <p className="text-sm text-gray-500 mb-4">The amount will be refunded to the user's balance.</p>
             <ModalTextarea
-              label="Reason (optional)"
-              rows={3}
-              value={rejectRemark}
+              label="Reason (optional)" rows={3} value={rejectRemark}
               onChange={(e) => setRejectRemark(e.target.value)}
               placeholder="e.g. Bank details mismatch"
             />
