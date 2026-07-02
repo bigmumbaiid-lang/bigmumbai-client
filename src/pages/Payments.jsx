@@ -307,16 +307,16 @@ export default function Payments() {
                   {loading ? (
                     [...Array(8)].map((_, i) => (
                       <tr key={i}>
-                        <td colSpan={8} className="px-5 py-3.5">
+                        <td colSpan={9} className="px-5 py-3.5">
                           <div className="h-4 bg-gray-100 rounded animate-pulse" />
                         </td>
                       </tr>
                     ))
                   ) : error ? (
-                    <tr><td colSpan={8} className="py-16 text-center text-rose-500">{error}</td></tr>
+                    <tr><td colSpan={9} className="py-16 text-center text-rose-500">{error}</td></tr>
                   ) : payments.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-16 text-center">
+                      <td colSpan={9} className="py-16 text-center">
                         <CreditCard size={40} className="mx-auto text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No payments found</p>
                       </td>
@@ -347,9 +347,9 @@ export default function Payments() {
                             })}
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap text-xs">
-                            {p.successAt ? (
+                            {(p.successAt || (p.status === 'success' && p.updatedAt)) ? (
                               <span className="text-emerald-600 font-medium">
-                                {new Date(p.successAt).toLocaleString('en-US', {
+                                {new Date(p.successAt || p.updatedAt).toLocaleString('en-US', {
                                   timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
                                   day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
                                 })}
