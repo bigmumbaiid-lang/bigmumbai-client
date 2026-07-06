@@ -42,7 +42,7 @@ export default function AppModal({ onClose, onConfirm, children, size = 'md' }) 
     return (
         <div
             className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[72px] sm:p-4"
-            style={{ background: 'rgba(148,163,184,0.5)', backdropFilter: 'blur(6px)' }}
+            style={{ background: 'rgba(148,163,184,0.4)', backdropFilter: 'blur(2px)' }}
             onClick={onClose}
         >
             <div
