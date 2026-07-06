@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useContext } from 'react';
+import AppModal, { ModalBtn } from './AppModal';
 import {
     LayoutDashboard, Users, CreditCard, Banknote, Gift,
     ArrowLeftRight, Megaphone, Bomb, Spade, Shield,
@@ -322,46 +323,20 @@ export default function Sidebar() {
             </aside>
 
             {/* Sign-out confirmation modal */}
-            {showSignOutModal && createPortal(
-                <div
-                    className="fixed inset-0 z-[200] flex items-center justify-center px-6"
-                    style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
-                    onClick={() => setShowSignOutModal(false)}
-                >
-                    <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-[340px] px-7 pb-6 pt-7 text-center"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* Icon */}
-                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
-                            <LogOut size={22} className="text-red-500" />
-                        </div>
-
-                        <h3 className="text-[17px] font-bold text-gray-900">Sign out?</h3>
-                        <p className="mt-1.5 text-[13.5px] text-gray-500 leading-relaxed">
-                            You will be returned to the login screen.
-                        </p>
-
-                        <div className="mt-5 flex gap-3">
-                            <button
-                                onClick={() => setShowSignOutModal(false)}
-                                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="flex-1 rounded-xl py-2.5 text-[14px] font-semibold text-white transition-colors"
-                                style={{ background: '#ef4444' }}
-                                onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = '#ef4444'; }}
-                            >
-                                Sign out
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
+            {showSignOutModal && (
+                <AppModal onClose={() => setShowSignOutModal(false)} onConfirm={handleLogout} size="sm">
+                    <AppModal.Header
+                        icon={<LogOut size={16} />}
+                        title="Sign out"
+                        subtitle="You will be returned to the login screen."
+                        onClose={() => setShowSignOutModal(false)}
+                        accent="rose"
+                    />
+                    <AppModal.Footer>
+                        <ModalBtn variant="secondary" onClick={() => setShowSignOutModal(false)}>Cancel</ModalBtn>
+                        <ModalBtn variant="rose" onClick={handleLogout}>Sign out</ModalBtn>
+                    </AppModal.Footer>
+                </AppModal>
             )}
         </>
     );
