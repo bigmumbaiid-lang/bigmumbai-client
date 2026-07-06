@@ -126,6 +126,16 @@ function AdminGifts() {
       notify.error(`Gift limit reached (${gift.usedCount}/${gift.limit}). Increase the usage limit to activate again.`);
       return;
     }
+    const action = gift.isActive ? 'Deactivate' : 'Activate';
+    const ok = await notify.confirm({
+      title: `${action} Gift?`,
+      message: gift.isActive
+        ? `"${gift.giftName}" will be deactivated and users won't be able to claim it.`
+        : `"${gift.giftName}" will be activated and available for users to claim.`,
+      confirmLabel: action,
+      variant: gift.isActive ? 'danger' : 'success',
+    });
+    if (!ok) return;
     try {
       const { data } = await api.put(`/gifts/${gift._id}`, { isActive: !gift.isActive });
       if (data.success) { notify.success(gift.isActive ? 'Gift deactivated.' : 'Gift activated.'); fetchGifts(); }

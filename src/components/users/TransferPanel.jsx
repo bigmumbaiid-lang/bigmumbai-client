@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Search, Loader2, TrendingUp, TrendingDown, ArrowLeftRight,
     X, UserX, RefreshCw, ArrowUpCircle, ArrowDownCircle, Clock,
+    Users, CheckCircle2, XCircle, Send, Eye, EyeOff,
 } from 'lucide-react';
 import api from '../../utils/axios';
 import { usersApi } from '../../api/users';
 import TransferModal from './TransferModal';
+import AppModal, { ModalBtn } from '../AppModal';
 import { TRANSFER_TYPE } from '../../constants/users';
 import { formatDate } from '../../utils/format';
 
@@ -17,10 +19,11 @@ const inr = (n) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(n) || 0);
 
 export default function TransferPanel() {
-    const [query,   setQuery  ] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [result,  setResult ] = useState(undefined);
-    const [modal,   setModal  ] = useState(null);
+    const [query,      setQuery     ] = useState('');
+    const [loading,    setLoading   ] = useState(false);
+    const [result,     setResult    ] = useState(undefined);
+    const [modal,      setModal     ] = useState(null);
+    const [massModal,  setMassModal ] = useState(false);
 
     const [history,      setHistory     ] = useState([]);
     const [histLoading,  setHistLoading ] = useState(true);
@@ -126,13 +129,24 @@ export default function TransferPanel() {
             {/* ── Main layout ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
-                {/* ── Left: Search ── */}
+                {/* ── Left: Search + Mass Transfer ── */}
                 <div className="space-y-3 lg:self-start">
                     {/* Search card */}
                     <div className="bg-white border border-gray-200">
-                        <div className="px-5 pt-4 pb-3 border-b border-gray-100">
-                            <p className="text-sm font-bold text-gray-900">Find User</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Enter exact username to add or deduct balance</p>
+                        <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-bold text-gray-900">Find User</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Enter exact username to add or deduct balance</p>
+                            </div>
+                            <button
+                                onClick={() => setMassModal(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white transition shrink-0"
+                                style={{ background: G }}
+                                onMouseEnter={e => e.currentTarget.style.background = GH}
+                                onMouseLeave={e => e.currentTarget.style.background = G}
+                            >
+                                <Users size={12} /> Mass Transfer
+                            </button>
                         </div>
                         <div className="p-4">
                             <form onSubmit={handleSearch} className="flex gap-2">
@@ -212,6 +226,7 @@ export default function TransferPanel() {
                             </div>
                         </div>
                     )}
+
                 </div>
 
                 {/* ── Right: Transfer history ── */}
@@ -329,7 +344,236 @@ export default function TransferPanel() {
                     onSuccess={updateBalance}
                 />
             )}
+
+            {massModal && (
+                <MassTransferModal
+                    onClose={() => setMassModal(false)}
+                    onDone={() => { fetchHistory(1); fetchTodayStats(); }}
+                />
+            )}
         </>
+    );
+}
+
+// ── Mass Transfer Modal ───────────────────────────────────────────────────────
+function MassTransferModal({ onClose, onDone }) {
+    const [rawText,    setRawText   ] = useState('');
+    const [amount,     setAmount    ] = useState('');
+    const [type,       setType      ] = useState('increase');
+    const [deductFull, setDeductFull] = useState(false);
+    const [remark,     setRemark    ] = useState('');
+    const [password,   setPassword  ] = useState('');
+    const [showPw,     setShowPw    ] = useState(false);
+    const [running,    setRunning   ] = useState(false);
+    const [results,    setResults   ] = useState(null);
+
+    const usernames   = rawText.split(/[\s,\n]+/).map(s => s.trim()).filter(Boolean);
+    const uniqueNames = [...new Set(usernames)];
+    const isAdd       = type === 'increase';
+    const canSend     = uniqueNames.length > 0
+        && (isAdd ? (!!amount && Number(amount) > 0) : (deductFull || (!!amount && Number(amount) > 0)))
+        && !!password.trim()
+        && !running;
+
+    const handleSend = async () => {
+        if (!canSend) return;
+        setRunning(true);
+        setResults(null);
+        const ok = [], fail = [];
+
+        for (const username of uniqueNames) {
+            try {
+                const data = await usersApi.list({ page: 1, limit: 5, search: username });
+                const user = (data.users || []).find(u => u.username.toLowerCase() === username.toLowerCase());
+                if (!user) { fail.push({ username, reason: 'User not found' }); continue; }
+                await usersApi.transferBalance({
+                    userId: user._id,
+                    amount: Number(amount),
+                    transferType: type,
+                    remark: remark.trim() || undefined,
+                    password: password.trim(),
+                    deductFull: !isAdd && deductFull,
+                });
+                ok.push(username);
+            } catch (err) {
+                const reason = err?.response?.data?.message || 'Failed';
+                if (err?.response?.status === 401) {
+                    setResults({ ok, fail: [{ username: '(all)', reason }] });
+                    setRunning(false);
+                    return;
+                }
+                fail.push({ username, reason });
+            }
+        }
+
+        setResults({ ok, fail });
+        setRunning(false);
+        if (ok.length) { setRawText(''); setAmount(''); setRemark(''); setPassword(''); onDone(); }
+    };
+
+    const reset = () => { setRawText(''); setAmount(''); setRemark(''); setPassword(''); setDeductFull(false); setResults(null); };
+
+    const accent = isAdd ? 'emerald' : 'rose';
+
+    return (
+        <AppModal onClose={onClose} size="md">
+            <AppModal.Header
+                icon={<Users size={17} />}
+                title="Mass Transfer"
+                subtitle="Send or deduct balance to multiple users at once"
+                onClose={onClose}
+                accent={accent}
+            />
+
+            <AppModal.Body className="space-y-4">
+
+                {/* Type toggle — prominent at top */}
+                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                    {[['increase', '+ Add'], ['decrease', '− Deduct']].map(([val, label]) => (
+                        <button key={val} type="button"
+                            onClick={() => { setType(val); setDeductFull(false); }}
+                            className="flex-1 py-2 text-sm font-semibold transition rounded-md"
+                            style={type === val
+                                ? { background: val === 'increase' ? '#059669' : '#e11d48', color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }
+                                : { background: 'transparent', color: '#6b7280' }}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Usernames */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        Usernames <span className="normal-case font-normal text-gray-400">(space, comma or newline)</span>
+                    </label>
+                    <textarea
+                        rows={3}
+                        value={rawText}
+                        onChange={e => { setRawText(e.target.value); setResults(null); }}
+                        placeholder="user1 user2 user3"
+                        className="w-full border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 bg-gray-50 focus:bg-white focus:outline-none focus:border-[#b1835a] focus:ring-2 focus:ring-[#d8ab83]/25 transition resize-none font-mono"
+                        style={{ borderRadius: '6px' }}
+                    />
+                    {uniqueNames.length > 0 && (
+                        <p className="text-xs mt-1.5 font-medium" style={{ color: isAdd ? '#059669' : '#e11d48' }}>
+                            {uniqueNames.length} unique user{uniqueNames.length > 1 ? 's' : ''} detected
+                        </p>
+                    )}
+                </div>
+
+                {/* Amount — with inline Max button when Deduct */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Amount (₹)</label>
+                    <div className="flex gap-2">
+                        <div className={`flex flex-1 items-center border bg-gray-50 transition focus-within:bg-white focus-within:ring-2 ${
+                            isAdd ? 'border-gray-200 focus-within:border-emerald-400 focus-within:ring-emerald-100'
+                                  : 'border-gray-200 focus-within:border-rose-400 focus-within:ring-rose-100'
+                        }`} style={{ borderRadius: '6px' }}>
+                            <span className="pl-3.5 text-gray-400 font-semibold text-base shrink-0">₹</span>
+                            <input
+                                type="number" min="1"
+                                value={amount}
+                                onChange={e => { setAmount(e.target.value); setDeductFull(false); }}
+                                disabled={!isAdd && deductFull}
+                                placeholder={!isAdd && deductFull ? 'Full balance per user' : '0'}
+                                className="flex-1 px-2 py-2.5 text-base font-bold text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-400 placeholder:font-normal disabled:cursor-not-allowed"
+                            />
+                        </div>
+                        {!isAdd && (
+                            <button
+                                type="button"
+                                onClick={() => { setDeductFull(v => !v); if (!deductFull) setAmount(''); }}
+                                className="px-3 py-2 text-xs font-bold border transition shrink-0"
+                                style={{
+                                    borderRadius: '6px',
+                                    ...(deductFull
+                                        ? { background: '#e11d48', color: '#fff', borderColor: '#e11d48' }
+                                        : { background: '#fff', color: '#e11d48', borderColor: '#fecdd3' }),
+                                }}
+                            >
+                                Max
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Remark */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        Remark <span className="normal-case font-normal text-gray-400">(optional)</span>
+                    </label>
+                    <input type="text" value={remark} onChange={e => setRemark(e.target.value)}
+                        placeholder="e.g. Bonus, Promo..."
+                        className="w-full border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 bg-gray-50 focus:bg-white focus:outline-none focus:border-[#b1835a] focus:ring-2 focus:ring-[#d8ab83]/25 transition"
+                        style={{ borderRadius: '6px' }} />
+                </div>
+
+                {/* Password */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        Login Password <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex items-center border border-gray-200 bg-gray-50 focus-within:bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-200/60 transition px-3.5"
+                        style={{ borderRadius: '6px' }}>
+                        <input
+                            type={showPw ? 'text' : 'password'}
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            placeholder="Enter your login password to confirm"
+                            autoComplete="current-password"
+                            className="flex-1 py-2.5 text-sm text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-400"
+                        />
+                        <button type="button" tabIndex={-1} onClick={() => setShowPw(s => !s)}
+                            className="text-gray-400 hover:text-gray-600 transition shrink-0 ml-2">
+                            {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Results */}
+                {results && (
+                    <div className="overflow-hidden text-xs" style={{ borderRadius: '6px', border: '1px solid #f3f4f6' }}>
+                        {results.ok.length > 0 && (
+                            <div className="px-3.5 py-3 bg-emerald-50 border-b border-emerald-100">
+                                <p className="font-semibold mb-1 flex items-center gap-1.5 text-emerald-700">
+                                    <CheckCircle2 size={13} /> {results.ok.length} succeeded
+                                </p>
+                                <p className="text-emerald-600 font-mono leading-relaxed">{results.ok.join(', ')}</p>
+                            </div>
+                        )}
+                        {results.fail.length > 0 && (
+                            <div className="px-3.5 py-3 bg-rose-50 border-b border-rose-100">
+                                <p className="font-semibold mb-1 flex items-center gap-1.5 text-rose-600">
+                                    <XCircle size={13} /> {results.fail.length} failed
+                                </p>
+                                {results.fail.map(f => (
+                                    <p key={f.username} className="text-rose-500 font-mono">
+                                        {f.username} <span className="text-rose-400 font-sans">— {f.reason}</span>
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+                        <button onClick={reset} className="w-full py-2 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition bg-white">
+                            Clear & reset
+                        </button>
+                    </div>
+                )}
+            </AppModal.Body>
+
+            <AppModal.Footer>
+                <ModalBtn variant="secondary" onClick={onClose}>Cancel</ModalBtn>
+                <ModalBtn
+                    variant={isAdd ? 'emerald' : 'rose'}
+                    onClick={handleSend}
+                    disabled={!canSend}
+                    className="min-w-[140px] flex items-center justify-center gap-2"
+                >
+                    {running
+                        ? <><Loader2 size={13} className="animate-spin" />Sending…</>
+                        : <><Send size={13} />{uniqueNames.length > 0 ? `Send to ${uniqueNames.length} user${uniqueNames.length !== 1 ? 's' : ''}` : 'Send'}</>}
+                </ModalBtn>
+            </AppModal.Footer>
+        </AppModal>
     );
 }
 

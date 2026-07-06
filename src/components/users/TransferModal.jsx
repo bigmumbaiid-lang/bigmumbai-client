@@ -9,8 +9,8 @@ const QUICK_AMOUNTS = [1000, 2000, 5000, 7000, 14000, 28000, 42000];
 
 export default function TransferModal({ user, transferType, onClose, onSuccess }) {
     const notify = useNotify();
-    const [amount, setAmount] = useState('');
-    const [remark, setRemark] = useState('');
+    const [amount,    setAmount   ] = useState('');
+    const [remark,    setRemark   ] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
     const formRef = useRef(null);
@@ -25,7 +25,6 @@ export default function TransferModal({ user, transferType, onClose, onSuccess }
             notify.error('Please enter a valid amount greater than 0');
             return;
         }
-
         try {
             setSubmitting(true);
             const data = await usersApi.transferBalance({

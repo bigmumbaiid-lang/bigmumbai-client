@@ -15,7 +15,10 @@ instance.interceptors.request.use((config) => {
 instance.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401 && !error.config.url.includes("/login")) {
+    const url = error.config.url || '';
+    const isLoginPage = url.includes("/login");
+    const isPasswordCheck = url.includes("/transfer-balance");
+    if (error.response?.status === 401 && !isLoginPage && !isPasswordCheck) {
       localStorage.removeItem("token");
       window.location.href = "/login";
     }

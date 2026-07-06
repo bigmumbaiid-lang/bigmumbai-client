@@ -13,14 +13,28 @@ const GL = '#e8f5ea';
 const GH = '#2e6437';
 
 const PRESETS = [
-  { key: 'today',  label: 'Today'       },
-  { key: 'last7',  label: 'Last 7 Days' },
-  { key: 'last30', label: 'Last 30 Days'},
-  { key: 'custom', label: 'Custom'      },
+  { key: 'today',   label: 'Today'       },
+  { key: 'last7',   label: 'Last 7 Days' },
+  { key: 'last30',  label: 'Last 30 Days'},
+  { key: 'alltime', label: 'All Time'    },
+  { key: 'custom',  label: 'Custom'      },
 ];
 
 const IST_OFFSET = 330 * 60000;
-const getISTDateStr = () => new Date(Date.now() + IST_OFFSET).toISOString().split('T')[0];
+// Returns YYYY-MM-DD in IST, daysAgo=0 → today
+const getISTDateStr = (daysAgo = 0) =>
+  new Date(Date.now() + IST_OFFSET - daysAgo * 86400000).toISOString().split('T')[0];
+
+// All preset date windows computed in IST
+const getPresetParams = (preset, custom) => {
+  if (preset === 'alltime') return { range: 'alltime' };
+  if (preset === 'custom')  return { startDate: custom.startDate, endDate: custom.endDate };
+  const today = getISTDateStr(0);
+  if (preset === 'today')   return { startDate: today, endDate: today };
+  if (preset === 'last7')   return { startDate: getISTDateStr(6),  endDate: today };
+  if (preset === 'last30')  return { startDate: getISTDateStr(29), endDate: today };
+  return { range: preset };
+};
 
 const EMPTY = {
   users:       { total: 0, new: 0 },
@@ -78,15 +92,13 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState(null);
   const [preset, setPreset] = useState('today');
-  const [custom, setCustom] = useState({ startDate: getISTDateStr(), endDate: getISTDateStr() });
+  const [custom, setCustom] = useState({ startDate: getISTDateStr(0), endDate: getISTDateStr(0) });
 
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true); setError(null);
       const token  = localStorage.getItem('token');
-      const params = preset === 'custom'
-        ? { startDate: custom.startDate, endDate: custom.endDate }
-        : { range: preset };
+      const params = getPresetParams(preset, custom);
 
       const { data } = await axios.get('/dashboard/stats', {
         headers: { Authorization: `Bearer ${token}` },
@@ -112,8 +124,7 @@ function Dashboard() {
 
   useEffect(() => {
     if (preset !== 'custom') fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preset]);
+  }, [preset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const d = stats.deposits;
   const w = stats.withdrawals;
