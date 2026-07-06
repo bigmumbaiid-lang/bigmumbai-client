@@ -84,7 +84,7 @@ function UserAvatar({ username, size = 'md' }) {
 }
 
 export default function Sidebar() {
-    const [isCollapsed,  setIsCollapsed ] = useState(false);
+    const [isCollapsed,  setIsCollapsed ] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     const navigate  = useNavigate();
@@ -93,6 +93,8 @@ export default function Sidebar() {
 
     const navGroups = buildNavGroups(user?.role === 'super_admin');
     const active    = location.pathname;
+
+    const [showSignOutModal, setShowSignOutModal] = useState(false);
 
     const handleLogout = () => { logout(); navigate('/login'); };
     const handleNav    = (href) => { navigate(href); setIsMobileOpen(false); };
@@ -204,7 +206,7 @@ export default function Sidebar() {
                     )}
                     {/* Desktop collapse toggle */}
                     <button
-                        onClick={() => setIsCollapsed(v => !v)}
+                        onClick={() => setIsCollapsed(v => { localStorage.setItem('sidebar_collapsed', String(!v)); return !v; })}
                         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                         className={`hidden md:grid h-7 w-7 shrink-0 place-items-center text-gray-400 hover:text-gray-700 transition-colors focus:outline-none ${isCollapsed ? 'mx-auto' : ''}`}
                     >
@@ -306,7 +308,7 @@ export default function Sidebar() {
                     style={{ borderTop: `1px solid ${DIVIDER}` }}
                 >
                     <button
-                        onClick={handleLogout}
+                        onClick={() => setShowSignOutModal(true)}
                         title={isCollapsed ? 'Sign out' : undefined}
                         className={`flex w-full items-center gap-2.5 px-2.5 py-[9px] text-[13px] font-medium transition-all focus:outline-none ${isCollapsed ? 'justify-center' : ''}`}
                         style={{ color: '#ef4444' }}
@@ -318,6 +320,49 @@ export default function Sidebar() {
                     </button>
                 </div>
             </aside>
+
+            {/* Sign-out confirmation modal */}
+            {showSignOutModal && createPortal(
+                <div
+                    className="fixed inset-0 z-[200] flex items-center justify-center px-6"
+                    style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+                    onClick={() => setShowSignOutModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-[340px] px-7 pb-6 pt-7 text-center"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Icon */}
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
+                            <LogOut size={22} className="text-red-500" />
+                        </div>
+
+                        <h3 className="text-[17px] font-bold text-gray-900">Sign out?</h3>
+                        <p className="mt-1.5 text-[13.5px] text-gray-500 leading-relaxed">
+                            You will be returned to the login screen.
+                        </p>
+
+                        <div className="mt-5 flex gap-3">
+                            <button
+                                onClick={() => setShowSignOutModal(false)}
+                                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className="flex-1 rounded-xl py-2.5 text-[14px] font-semibold text-white transition-colors"
+                                style={{ background: '#ef4444' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#ef4444'; }}
+                            >
+                                Sign out
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </>
     );
 }
