@@ -21,6 +21,7 @@ import UsdtDeposits from './pages/UsdtDeposits';
 import TrxDeposits from './pages/TrxDeposits';
 import CryptoPayments from './pages/CryptoPayments';
 import AdminManagement from './pages/AdminManagement';
+import DatabaseBackup from './pages/DatabaseBackup';
 
 function AppRoutes() {
   const { user } = useContext(AuthContext);
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="/trx-deposits"     element={<ProtectedRoute requireRole="super_admin"><TrxDeposits /></ProtectedRoute>} />
       <Route path="/crypto-payments"  element={<ProtectedRoute><CryptoPayments /></ProtectedRoute>} />
       <Route path="/admin-management" element={<ProtectedRoute requireRole="super_admin"><AdminManagement /></ProtectedRoute>} />
+      <Route path="/db-backup"        element={<ProtectedRoute requireRole="super_admin"><DatabaseBackup /></ProtectedRoute>} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
