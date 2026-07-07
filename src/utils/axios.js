@@ -17,7 +17,7 @@ instance.interceptors.response.use(
   (error) => {
     const url = error.config.url || '';
     const isLoginPage = url.includes("/login");
-    const isPasswordCheck = url.includes("/transfer-balance");
+    const isPasswordCheck = url.includes("/transfer-balance") || url.includes("/db/import");
     if (error.response?.status === 401 && !isLoginPage && !isPasswordCheck) {
       localStorage.removeItem("token");
       window.location.href = "/login";
