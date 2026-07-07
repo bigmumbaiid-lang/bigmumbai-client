@@ -25,7 +25,7 @@ const getISTDateStr = (offsetDays = 0) => {
 
 const STATUS_CFG = {
   pending:  { label: 'Pending',  bg: '#fef9c3', color: '#a16207', Icon: Clock        },
-  approved: { label: 'Approved', bg: '#eff6ff',  color: '#2563eb', Icon: CheckCircle  },
+  approved: { label: 'Processing', bg: '#f0f9ff',  color: '#0369a1', Icon: Clock  },
   success:  { label: 'Success',  bg: GL,         color: G,         Icon: CheckCircle  },
   failed:   { label: 'Failed',   bg: '#fff1f2',  color: '#be123c', Icon: XCircle      },
 };
@@ -225,7 +225,7 @@ export default function Withdrawals() {
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <StatCard label="Pending Payout"   value={inr(stats.pending.total)}  sub={`${stats.pending.count} request(s)`}  valueColor="#a16207" icon={Clock}        iconColor="#d97706" iconBg="#fef9c3" />
-              <StatCard label="Approved"          value={inr(stats.approved.total)} sub={`${stats.approved.count} in flight`}  valueColor="#2563eb" icon={CheckCircle}  iconColor="#2563eb" iconBg="#eff6ff" />
+              <StatCard label="Processing"         value={inr(stats.approved.total)} sub={`${stats.approved.count} in flight`}  valueColor="#0369a1" icon={Clock}        iconColor="#0369a1" iconBg="#f0f9ff" />
               <StatCard label="Paid Out"          value={inr(stats.success.total)}  sub={`${stats.success.count} successful`}  valueColor="#15803d" icon={TrendingUp}   iconColor={G}       iconBg={GL}      />
               <StatCard label="Failed / Refunded" value={inr(stats.failed.total)}   sub={`${stats.failed.count} request(s)`}  valueColor="#be123c" icon={XCircle}      iconColor="#e11d48" iconBg="#fff1f2" />
             </div>
@@ -264,7 +264,7 @@ export default function Withdrawals() {
                 options={[
                   { value: '',         label: 'All Status' },
                   { value: 'pending',  label: 'Pending'    },
-                  { value: 'approved', label: 'Approved'   },
+                  { value: 'approved', label: 'Processing' },
                   { value: 'success',  label: 'Success'    },
                   { value: 'failed',   label: 'Failed'     },
                 ]}
