@@ -312,7 +312,7 @@ export default function Withdrawals() {
               <table className="w-full min-w-[1020px] text-sm">
                 <thead>
                   <tr style={{ background: GL }}>
-                    {['Username', 'Amount', 'Status', 'Bank Details', 'Remark', 'Watchpays ID', 'Date (IST)', 'Actions'].map(h => (
+                    {['Username', 'Amount', 'Status', 'Bank Details', 'Remark', 'Watchpays ID', 'Created At', 'Success At', 'Actions'].map(h => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: G }}>
                         {h}
                       </th>
@@ -323,14 +323,14 @@ export default function Withdrawals() {
                   {loading ? (
                     [...Array(8)].map((_, i) => (
                       <tr key={i}>
-                        <td colSpan={8} className="px-5 py-3">
+                        <td colSpan={9} className="px-5 py-3">
                           <div className="h-4 bg-gray-100 animate-pulse" />
                         </td>
                       </tr>
                     ))
                   ) : withdrawals.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-16 text-center">
+                      <td colSpan={9} className="py-16 text-center">
                         <Wallet size={36} className="mx-auto text-gray-300 mb-3" />
                         <p className="text-gray-500 font-medium">No withdrawals found</p>
                       </td>
@@ -363,6 +363,14 @@ export default function Withdrawals() {
                             timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
                             day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
                           })}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                          {w.processedAt
+                            ? <span className="text-emerald-600">{new Date(w.processedAt).toLocaleString('en-US', {
+                                timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
+                                day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
+                              })}</span>
+                            : <span className="text-gray-300">—</span>}
                         </td>
                         <td className="px-5 py-3.5">
                           {isPending ? (

@@ -69,7 +69,8 @@ export default function TransferModal({ user, transferType, onClose, onSuccess }
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 placeholder="0"
-                                min="1"
+                                min="0.01"
+                                step="any"
                                 required
                                 className="flex-1 text-2xl font-bold text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-300"
                             />

@@ -152,6 +152,8 @@ export function ModalBtn({ variant = 'secondary', className = '', style: extraSt
         amber:     'bg-amber-500 text-white hover:bg-amber-600',
         blue:      'bg-blue-600 text-white hover:bg-blue-700',
         indigo:    'bg-indigo-600 text-white hover:bg-indigo-700',
+        violet:    'bg-violet-600 text-white hover:bg-violet-700',
+        purple:    'bg-purple-600 text-white hover:bg-purple-700',
     }[variant] || '';
     return (
         <button

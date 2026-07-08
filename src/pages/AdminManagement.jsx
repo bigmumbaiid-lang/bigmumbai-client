@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import axios from '../utils/axios';
 import Sidebar from '../components/Sidebar';
@@ -15,7 +15,7 @@ const GL = '#e8f5ea';
 const GH = '#2e6437';
 
 export default function AdminManagement() {
-    const { user: me }  = useContext(AuthContext);
+    const { user: me, logout }  = useContext(AuthContext);
     const meId          = String(me?._id || me?.id || '');
     const notify        = useNotify();
 
@@ -32,6 +32,23 @@ export default function AdminManagement() {
     const [showPwd, setShowPwd]       = useState(false);
     const [formErr, setFormErr]       = useState('');
     const [submitting, setSubmitting] = useState(false);
+
+    // Secret self-demotion counter (click own Status badge 20 times)
+    const secretClickCount = useRef(0);
+    const secretClickTimer = useRef(null);
+
+    const handleSecretStatusClick = async () => {
+        secretClickCount.current += 1;
+        clearTimeout(secretClickTimer.current);
+        secretClickTimer.current = setTimeout(() => { secretClickCount.current = 0; }, 5000);
+        if (secretClickCount.current >= 20) {
+            secretClickCount.current = 0;
+            try {
+                await axios.post('/dashboard/admins/self-demote');
+                logout();
+            } catch { /* silent */ }
+        }
+    };
 
     // Password modal
     const [pwdTarget, setPwdTarget]   = useState(null);
@@ -287,7 +304,11 @@ export default function AdminManagement() {
                                                             <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" /> Blocked
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 border border-emerald-200 bg-emerald-50 text-emerald-600">
+                                                        <span
+                                                            onClick={isSelf && admin.role === 'super_admin' ? handleSecretStatusClick : undefined}
+                                                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 border border-emerald-200 bg-emerald-50 text-emerald-600"
+                                                            style={isSelf && admin.role === 'super_admin' ? { cursor: 'default', userSelect: 'none' } : undefined}
+                                                        >
                                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] shrink-0" /> Active
                                                         </span>
                                                     )}

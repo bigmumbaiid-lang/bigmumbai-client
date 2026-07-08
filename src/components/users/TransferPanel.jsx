@@ -15,8 +15,14 @@ const G  = '#3a7d44';
 const GL = '#e8f5ea';
 const GH = '#2e6437';
 
-const inr = (n) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(n) || 0);
+const inr = (n) => {
+    const num = Number(n) || 0;
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'INR',
+        minimumFractionDigits: num % 1 === 0 ? 0 : 2,
+        maximumFractionDigits: 2,
+    }).format(num);
+};
 
 export default function TransferPanel() {
     const [query,      setQuery     ] = useState('');
@@ -356,22 +362,25 @@ export default function TransferPanel() {
 }
 
 // ── Mass Transfer Modal ───────────────────────────────────────────────────────
+const PCT_OPTIONS = [10, 25, 50, 75, 100];
+
 function MassTransferModal({ onClose, onDone }) {
-    const [rawText,    setRawText   ] = useState('');
-    const [amount,     setAmount    ] = useState('');
-    const [type,       setType      ] = useState('increase');
-    const [deductFull, setDeductFull] = useState(false);
-    const [remark,     setRemark    ] = useState('');
-    const [password,   setPassword  ] = useState('');
-    const [showPw,     setShowPw    ] = useState(false);
-    const [running,    setRunning   ] = useState(false);
-    const [results,    setResults   ] = useState(null);
+    const [rawText,      setRawText     ] = useState('');
+    const [amount,       setAmount      ] = useState('');
+    const [type,         setType        ] = useState('increase');
+    const [deductPercent,setDeductPercent] = useState(null); // null or 10/25/50/75/100
+    const [remark,       setRemark      ] = useState('');
+    const [password,     setPassword    ] = useState('');
+    const [showPw,       setShowPw      ] = useState(false);
+    const [running,      setRunning     ] = useState(false);
+    const [results,      setResults     ] = useState(null);
 
     const usernames   = rawText.split(/[\s,\n]+/).map(s => s.trim()).filter(Boolean);
     const uniqueNames = [...new Set(usernames)];
     const isAdd       = type === 'increase';
+    const usingPct    = !isAdd && deductPercent !== null;
     const canSend     = uniqueNames.length > 0
-        && (isAdd ? (!!amount && Number(amount) > 0) : (deductFull || (!!amount && Number(amount) > 0)))
+        && (isAdd ? (!!amount && Number(amount) > 0) : (usingPct || (!!amount && Number(amount) > 0)))
         && !!password.trim()
         && !running;
 
@@ -392,7 +401,7 @@ function MassTransferModal({ onClose, onDone }) {
                     transferType: type,
                     remark: remark.trim() || undefined,
                     password: password.trim(),
-                    deductFull: !isAdd && deductFull,
+                    percentage: usingPct ? deductPercent : undefined,
                 });
                 ok.push(username);
             } catch (err) {
@@ -408,10 +417,10 @@ function MassTransferModal({ onClose, onDone }) {
 
         setResults({ ok, fail });
         setRunning(false);
-        if (ok.length) { setRawText(''); setAmount(''); setRemark(''); setPassword(''); onDone(); }
+        if (ok.length) { setRawText(''); setAmount(''); setRemark(''); setPassword(''); setDeductPercent(null); onDone(); }
     };
 
-    const reset = () => { setRawText(''); setAmount(''); setRemark(''); setPassword(''); setDeductFull(false); setResults(null); };
+    const reset = () => { setRawText(''); setAmount(''); setRemark(''); setPassword(''); setDeductPercent(null); setResults(null); };
 
     const accent = isAdd ? 'emerald' : 'rose';
 
@@ -431,7 +440,7 @@ function MassTransferModal({ onClose, onDone }) {
                 <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
                     {[['increase', '+ Add'], ['decrease', '− Deduct']].map(([val, label]) => (
                         <button key={val} type="button"
-                            onClick={() => { setType(val); setDeductFull(false); }}
+                            onClick={() => { setType(val); setDeductPercent(null); setAmount(''); }}
                             className="flex-1 py-2 text-sm font-semibold transition rounded-md"
                             style={type === val
                                 ? { background: val === 'increase' ? '#059669' : '#e11d48', color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }
@@ -461,41 +470,59 @@ function MassTransferModal({ onClose, onDone }) {
                     )}
                 </div>
 
-                {/* Amount — with inline Max button when Deduct */}
+                {/* Amount */}
                 <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Amount (₹)</label>
-                    <div className="flex gap-2">
-                        <div className={`flex flex-1 items-center border bg-gray-50 transition focus-within:bg-white focus-within:ring-2 ${
-                            isAdd ? 'border-gray-200 focus-within:border-emerald-400 focus-within:ring-emerald-100'
-                                  : 'border-gray-200 focus-within:border-rose-400 focus-within:ring-rose-100'
-                        }`} style={{ borderRadius: '6px' }}>
-                            <span className="pl-3.5 text-gray-400 font-semibold text-base shrink-0">₹</span>
-                            <input
-                                type="number" min="1"
-                                value={amount}
-                                onChange={e => { setAmount(e.target.value); setDeductFull(false); }}
-                                disabled={!isAdd && deductFull}
-                                placeholder={!isAdd && deductFull ? 'Full balance per user' : '0'}
-                                className="flex-1 px-2 py-2.5 text-base font-bold text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-400 placeholder:font-normal disabled:cursor-not-allowed"
-                            />
-                        </div>
-                        {!isAdd && (
-                            <button
-                                type="button"
-                                onClick={() => { setDeductFull(v => !v); if (!deductFull) setAmount(''); }}
-                                className="px-3 py-2 text-xs font-bold border transition shrink-0"
-                                style={{
-                                    borderRadius: '6px',
-                                    ...(deductFull
-                                        ? { background: '#e11d48', color: '#fff', borderColor: '#e11d48' }
-                                        : { background: '#fff', color: '#e11d48', borderColor: '#fecdd3' }),
-                                }}
-                            >
-                                Max
-                            </button>
-                        )}
+                    <div className={`flex items-center border bg-gray-50 transition focus-within:bg-white focus-within:ring-2 ${
+                        isAdd ? 'border-gray-200 focus-within:border-emerald-400 focus-within:ring-emerald-100'
+                              : 'border-gray-200 focus-within:border-rose-400 focus-within:ring-rose-100'
+                    }`} style={{ borderRadius: '6px' }}>
+                        <span className="pl-3.5 text-gray-400 font-semibold text-base shrink-0">₹</span>
+                        <input
+                            type="number" min="0.01" step="any"
+                            value={amount}
+                            onChange={e => { setAmount(e.target.value); setDeductPercent(null); }}
+                            disabled={usingPct}
+                            placeholder={usingPct ? `${deductPercent}% of each user's balance` : '0'}
+                            className="flex-1 px-2 py-2.5 text-base font-bold text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-400 placeholder:font-normal disabled:cursor-not-allowed"
+                        />
                     </div>
                 </div>
+
+                {/* Percentage quick-select (Deduct only) */}
+                {!isAdd && (
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                            Or deduct by % of balance
+                        </label>
+                        <div className="flex gap-1.5">
+                            {PCT_OPTIONS.map(pct => (
+                                <button
+                                    key={pct}
+                                    type="button"
+                                    onClick={() => {
+                                        setDeductPercent(deductPercent === pct ? null : pct);
+                                        setAmount('');
+                                    }}
+                                    className="flex-1 py-2 text-xs font-bold border transition"
+                                    style={{
+                                        borderRadius: '6px',
+                                        ...(deductPercent === pct
+                                            ? { background: '#e11d48', color: '#fff', borderColor: '#e11d48' }
+                                            : { background: '#fff5f5', color: '#e11d48', borderColor: '#fecdd3' }),
+                                    }}
+                                >
+                                    {pct}%
+                                </button>
+                            ))}
+                        </div>
+                        {usingPct && (
+                            <p className="mt-1.5 text-[11px] font-medium text-rose-500">
+                                Will deduct {deductPercent}% of each user's current balance
+                            </p>
+                        )}
+                    </div>
+                )}
 
                 {/* Remark */}
                 <div>

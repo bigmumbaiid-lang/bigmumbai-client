@@ -68,9 +68,13 @@ function AdminGifts() {
     if (Number(formData.amount) <= 0) {
       notify.error('Amount must be greater than zero.'); return;
     }
+    const limitVal = parseInt(formData.limit);
+    if (!limitVal || limitVal < 1) {
+      notify.error('Usage limit must be at least 1.'); return;
+    }
     setCreating(true);
     try {
-      const { data } = await api.post('/gifts/create', formData);
+      const { data } = await api.post('/gifts/create', { ...formData, limit: limitVal });
       if (data.success) {
         const link = data.shareableLink;
         try { await navigator.clipboard?.writeText(link); notify.success('Gift created — link copied.'); }
@@ -381,7 +385,7 @@ function AdminGifts() {
                 </div>
                 <ModalInput label="Usage Limit *" type="number" required min="1"
                   value={formData.limit}
-                  onChange={e => setFormData({ ...formData, limit: parseInt(e.target.value) || 1 })} />
+                  onChange={e => setFormData({ ...formData, limit: e.target.value === '' ? '' : parseInt(e.target.value) })} />
               </div>
             </form>
           </AppModal.Body>
@@ -430,7 +434,7 @@ function AdminGifts() {
                 <div>
                   <ModalInput label="Usage Limit" type="number" min={editTarget.usedCount}
                     value={editForm.limit}
-                    onChange={e => setEditForm({ ...editForm, limit: parseInt(e.target.value) || 0 })} />
+                    onChange={e => setEditForm({ ...editForm, limit: e.target.value === '' ? '' : parseInt(e.target.value) })} />
                   <p className="mt-1 text-xs text-gray-400">Min: {editTarget.usedCount}</p>
                 </div>
               </div>

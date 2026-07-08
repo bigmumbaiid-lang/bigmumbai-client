@@ -8,7 +8,7 @@ import {
     LayoutDashboard, Users, CreditCard, Banknote, Gift,
     ArrowLeftRight, Megaphone, Bomb, Spade, Shield,
     PanelLeftClose, PanelLeftOpen, LogOut,
-    Menu, X, Bitcoin, UserCog, MoreHorizontal, Database,
+    Menu, X, Bitcoin, UserCog, MoreHorizontal, Database, SlidersHorizontal,
 } from 'lucide-react';
 
 const G       = '#3a7d44';
@@ -60,8 +60,9 @@ const buildNavGroups = (isSuperAdmin) => [
         items: [
             { icon: Shield, label: 'Security', href: '/security' },
             ...(isSuperAdmin ? [
-                { icon: UserCog,  label: 'Admin Mgmt', href: '/admin-management' },
-                { icon: Database, label: 'DB Backup',  href: '/db-backup'        },
+                { icon: UserCog,          label: 'Admin Mgmt',    href: '/admin-management' },
+                { icon: SlidersHorizontal, label: 'Deposit Config', href: '/deposit-config'   },
+                { icon: Database,          label: 'DB Backup',      href: '/db-backup'        },
             ] : []),
         ],
     },

@@ -6,7 +6,7 @@ import AppModal, { ModalBtn, ModalInput, ModalTextarea } from '../components/App
 import {
   Megaphone, Search, Pencil, Trash2, RefreshCw, Loader2,
   ChevronLeft, ChevronRight, Globe, User, AlertTriangle,
-  CheckCircle, RotateCcw, Send,
+  CheckCircle, RotateCcw, Send, Users,
 } from 'lucide-react';
 import Select from '../components/Select';
 
@@ -41,6 +41,39 @@ export default function Announcements() {
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [saving, setSaving]                     = useState(false);
   const [deleting, setDeleting]                 = useState(false);
+
+  // Mass send state
+  const [showMassModal, setShowMassModal]       = useState(false);
+  const [massRawText, setMassRawText]           = useState('');
+  const [massSaving, setMassSaving]             = useState(false);
+  const [massResults, setMassResults]           = useState(null);
+  const [massForm, setMassForm]                 = useState({
+    title: '', content: '', date: '', startDate: '', endDate: '', imageUrl: '',
+  });
+
+  const openMassModal = () => {
+    const d = defaultDates();
+    setMassForm({ title: '', content: '', date: d.date, startDate: d.startDate, endDate: d.endDate, imageUrl: '' });
+    setMassRawText('');
+    setMassResults(null);
+    setShowMassModal(true);
+  };
+
+  const handleMassSend = async () => {
+    const usernames = massRawText.trim().split(/[\s,\n]+/).filter(Boolean);
+    if (!usernames.length) { notify.error('Enter at least one username'); return; }
+    if (!massForm.title.trim() || !massForm.content.trim()) { notify.error('Title and content are required'); return; }
+    setMassSaving(true);
+    setMassResults(null);
+    try {
+      const { data } = await axiosInstance.post('/announcements/mass', { usernames, ...massForm });
+      setMassResults(data.results || []);
+      notify.success(data.message);
+      fetchAnnouncements(1);
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'Mass send failed');
+    } finally { setMassSaving(false); }
+  };
 
   const [formData, setFormData] = useState({
     title: '', content: '', date: '', startDate: '',
@@ -291,6 +324,15 @@ export default function Announcements() {
                 >
                   <Globe size={13} /> New Global
                 </button>
+                <button
+                  onClick={openMassModal}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 border text-sm font-semibold transition"
+                  style={{ borderColor: '#7c3aed', color: '#7c3aed', background: '#f5f3ff' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#7c3aed'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f5f3ff'; e.currentTarget.style.color = '#7c3aed'; }}
+                >
+                  <Users size={13} /> Mass Send
+                </button>
               </div>
             </div>
 
@@ -431,6 +473,106 @@ export default function Announcements() {
           </div>
         </div>
       </main>
+
+      {/* Mass Send Modal */}
+      {showMassModal && (
+        <AppModal onClose={() => setShowMassModal(false)} size="2xl">
+          <AppModal.Header
+            icon={<Users size={15} />}
+            title="Mass Send Announcement"
+            subtitle="Send a personal announcement to multiple users at once"
+            onClose={() => setShowMassModal(false)}
+            accent="violet"
+          />
+          <AppModal.Body className="space-y-4">
+
+            {/* Usernames textarea */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                Usernames <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={massRawText}
+                onChange={e => { setMassRawText(e.target.value); setMassResults(null); }}
+                rows={3}
+                placeholder={'user1 user2 user3\nor one per line'}
+                className="w-full border border-gray-300 bg-white text-sm text-gray-800 px-3 py-2 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/15 resize-none placeholder:text-gray-400 font-mono"
+              />
+              {massRawText.trim() && (
+                <p className="mt-1 text-[10px] text-gray-400">
+                  {massRawText.trim().split(/[\s,\n]+/).filter(Boolean).length} username(s) detected
+                </p>
+              )}
+            </div>
+
+            {/* $username hint */}
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-purple-50 border border-purple-200 text-xs text-purple-700">
+              <span className="font-bold shrink-0 mt-0.5">💡</span>
+              <span>Use <code className="bg-purple-100 px-1 py-0.5 font-mono font-semibold">$username</code> in the title or content — it will be replaced with each user's actual username automatically.</span>
+            </div>
+
+            <ModalInput
+              label="Title *"
+              type="text"
+              required
+              placeholder="e.g. Hello $username, you have a special offer!"
+              value={massForm.title}
+              onChange={e => setMassForm({ ...massForm, title: e.target.value })}
+            />
+            <ModalTextarea
+              label="Content *"
+              required
+              rows={4}
+              placeholder={'e.g. [-$username-] Due to abnormal account detection…'}
+              value={massForm.content}
+              onChange={e => setMassForm({ ...massForm, content: e.target.value })}
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <ModalInput label="Display Date *" type="date" required
+                value={massForm.date}
+                onChange={e => setMassForm({ ...massForm, date: e.target.value })} />
+              <ModalInput label="Start Date *" type="date" required
+                value={massForm.startDate}
+                onChange={e => setMassForm({ ...massForm, startDate: e.target.value })} />
+            </div>
+            <ModalInput label="End Date (optional)" type="date"
+              value={massForm.endDate}
+              onChange={e => setMassForm({ ...massForm, endDate: e.target.value })} />
+            <ModalInput label="Image URL (optional)" type="text" placeholder="https://…"
+              value={massForm.imageUrl}
+              onChange={e => setMassForm({ ...massForm, imageUrl: e.target.value })} />
+
+            {/* Results */}
+            {massResults && (
+              <div className="border border-gray-200 divide-y divide-gray-100 max-h-48 overflow-y-auto text-xs">
+                {massResults.map((r, i) => (
+                  <div key={i} className={`flex items-center justify-between px-3 py-2 ${r.success ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                    <span className={`font-semibold ${r.success ? 'text-emerald-700' : 'text-rose-700'}`}>@{r.username}</span>
+                    <span className={r.success ? 'text-emerald-600' : 'text-rose-500'}>{r.success ? '✓ Sent' : `✗ ${r.error}`}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </AppModal.Body>
+          <AppModal.Footer>
+            <ModalBtn variant="secondary" type="button" onClick={() => setShowMassModal(false)}>
+              {massResults ? 'Close' : 'Cancel'}
+            </ModalBtn>
+            {!massResults && (
+              <ModalBtn
+                variant="purple"
+                type="button"
+                disabled={massSaving}
+                onClick={handleMassSend}
+                className="flex items-center gap-1.5 min-w-[120px]"
+              >
+                {massSaving ? <><RefreshCw size={13} className="animate-spin" /> Sending…</> : <><Send size={13} /> Send All</>}
+              </ModalBtn>
+            )}
+          </AppModal.Footer>
+        </AppModal>
+      )}
 
       {/* Create / Edit Modal */}
       {showModal && (
