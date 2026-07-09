@@ -1,5 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
+
+const PANEL_W = 292;
+const PANEL_MAX_H = 380;
+const VIEWPORT_MARGIN = 8;
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const SHORT  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -22,22 +27,57 @@ function midnight(d) {
   const x = new Date(d); x.setHours(0,0,0,0); return x;
 }
 
-export default function DateRangePicker({ from, to, onChange, placeholder = 'Select date range' }) {
+export default function DateRangePicker({ from, to, onChange, placeholder = 'Select date range', className = '' }) {
   const [open, setOpen]           = useState(false);
   const [viewYear, setViewYear]   = useState(new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [hover, setHover]         = useState(null);
+  const [pos, setPos]             = useState({ top: 0, left: 0 });
   const ref = useRef(null);
+  const popupRef = useRef(null);
 
   const fromDate = parseYmd(from);
   const toDate   = parseYmd(to);
   const phase    = from && !to ? 1 : 0; // 1 = waiting for end date
 
   useEffect(() => {
-    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const fn = (e) => {
+      if (ref.current?.contains(e.target)) return;
+      if (popupRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
   }, []);
+
+  // Popup is rendered in a portal (so it can't be clipped by an ancestor's
+  // `overflow-x-auto` scroll row — a problem on every mobile filter bar).
+  // Position it with fixed coords derived from the trigger button, clamped
+  // to the viewport so it never runs off-screen on narrow devices.
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const compute = () => {
+      const rect = ref.current.getBoundingClientRect();
+      let left = rect.left;
+      if (left + PANEL_W + VIEWPORT_MARGIN > window.innerWidth) {
+        left = window.innerWidth - PANEL_W - VIEWPORT_MARGIN;
+      }
+      left = Math.max(VIEWPORT_MARGIN, left);
+
+      let top = rect.bottom + 6;
+      if (top + PANEL_MAX_H > window.innerHeight && rect.top - PANEL_MAX_H - 6 > 0) {
+        top = rect.top - PANEL_MAX_H - 6; // flip above if no room below
+      }
+      setPos({ top, left });
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
+  }, [open]);
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -100,17 +140,18 @@ export default function DateRangePicker({ from, to, onChange, placeholder = 'Sel
     : placeholder;
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={ref} className={`relative inline-block w-full md:w-auto ${className}`}>
       <button
         onClick={() => setOpen(o => !o)}
+        className="flex w-full md:w-auto md:min-w-[230px]"
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
+          alignItems: 'center', gap: 8,
           padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
           border: open ? '1.5px solid #b1835a' : '1px solid #e5e7eb',
           background: 'white', fontSize: 13,
           color: hasValue ? '#374151' : '#9ca3af',
           boxShadow: open ? '0 0 0 3px rgba(217,173,130,0.15)' : 'none',
-          transition: 'all 0.15s', whiteSpace: 'nowrap', minWidth: 230,
+          transition: 'all 0.15s', whiteSpace: 'nowrap',
         }}
       >
         <Calendar size={14} style={{ color: '#b1835a', flexShrink: 0 }} />
@@ -127,10 +168,11 @@ export default function DateRangePicker({ from, to, onChange, placeholder = 'Sel
         )}
       </button>
 
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 1000,
-          background: 'white', borderRadius: 14, width: 292,
+      {open && createPortal(
+        <div ref={popupRef} style={{
+          position: 'fixed', top: pos.top, left: pos.left, zIndex: 1000,
+          background: 'white', borderRadius: 14, width: PANEL_W,
+          maxHeight: PANEL_MAX_H, overflowY: 'auto',
           boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)',
           border: '1px solid rgba(0,0,0,0.07)', padding: 16,
         }}>
@@ -187,7 +229,8 @@ export default function DateRangePicker({ from, to, onChange, placeholder = 'Sel
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -16,8 +16,9 @@ const GH  = '#2e6437';   // hover / dark green
 const CHANNEL_BADGE = {
   watchpays: { bg: '#ede9fe', color: '#6d28d9' },
   jazpays:   { bg: '#e0f2fe', color: '#0369a1' },
+  bondpay:   { bg: '#ffedd5', color: '#c2410c' },
 };
-const CHANNEL_LABEL = { watchpays: 'WatchPays', jazpays: 'JazPays' };
+const CHANNEL_LABEL = { watchpays: 'WatchPays', jazpays: 'JazPays', bondpay: 'BondPay' };
 
 const STATUS_CFG = {
   success:   { bg: '#dcfce7', color: '#15803d', label: 'Success'   },
@@ -243,9 +244,9 @@ export default function Payments() {
                 icon={Clock} iconColor="#d97706" iconBg="#fef9c3"
               />
               <StatCard
-                label="WatchPays / JazPays"
-                value={inr((stats.channels?.watchpays?.total || 0) + (stats.channels?.jazpays?.total || 0))}
-                sub={`WP: ${inr(stats.channels?.watchpays?.total || 0)}  ·  JP: ${inr(stats.channels?.jazpays?.total || 0)}`}
+                label="WatchPays / JazPays / BondPay"
+                value={inr((stats.channels?.watchpays?.total || 0) + (stats.channels?.jazpays?.total || 0) + (stats.channels?.bondpay?.total || 0))}
+                sub={`WP: ${inr(stats.channels?.watchpays?.total || 0)}  ·  JP: ${inr(stats.channels?.jazpays?.total || 0)}  ·  BP: ${inr(stats.channels?.bondpay?.total || 0)}`}
                 icon={CreditCard} iconColor="#7c3aed" iconBg="#ede9fe"
               />
             </div>
@@ -312,6 +313,7 @@ export default function Payments() {
                     { value: '',           label: 'All Channels' },
                     { value: 'watchpays',  label: 'WatchPays'    },
                     { value: 'jazpays',    label: 'JazPays'      },
+                    { value: 'bondpay',    label: 'BondPay'      },
                   ]}
                 />
               </div>
@@ -347,11 +349,13 @@ export default function Payments() {
               </button>
             </div>
 
-            {/* Row 2 — date quick filters */}
-            <div className="px-4 py-3 flex flex-wrap items-center gap-2">
-              <Filter size={13} className="text-gray-400 shrink-0" />
-              <span className="text-xs text-gray-400 font-medium mr-1">Date:</span>
-              {quickBtns.map((btn) => {
+            {/* Row 2 — date quick filters (2-up grid on mobile, scrollable row on desktop) */}
+            <div className="px-4 py-3 grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:gap-2">
+              <div className="col-span-2 hidden md:flex items-center gap-2">
+                <Filter size={13} className="text-gray-400 shrink-0" />
+                <span className="text-xs text-gray-400 font-medium mr-1">Date:</span>
+              </div>
+              {quickBtns.filter((btn) => btn.key !== 'custom').map((btn) => {
                 const active = activeQuick === btn.key;
                 return (
                   <button
@@ -370,8 +374,20 @@ export default function Payments() {
                   </button>
                 );
               })}
+              <button
+                onClick={() => setActiveQuick('custom')}
+                className="col-span-2 md:col-auto px-3 py-1.5 text-xs font-semibold border transition"
+                style={
+                  activeQuick === 'custom'
+                    ? { background: G, borderColor: G, color: '#fff' }
+                    : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }
+                }
+              >
+                Custom Range
+              </button>
               {activeQuick === 'custom' && (
                 <DateRangePicker
+                  className="col-span-2 md:col-auto"
                   from={startDate}
                   to={endDate}
                   onChange={(f, t) => { setStartDate(f); setEndDate(t); setPage(1); }}

@@ -236,26 +236,40 @@ export default function Withdrawals() {
 
             {/* Row 1 — date + status + amount + reset */}
             <div className="p-4 flex flex-wrap items-center gap-2 border-b border-gray-100">
-              <span className="text-xs text-gray-400 font-medium mr-1">Date:</span>
-              {DATE_PRESETS.map(({ key, label }) => (
+              <span className="hidden md:inline text-xs text-gray-400 font-medium mr-1">Date:</span>
+
+              {/* Date presets — 2-up grid on mobile, inline row on desktop */}
+              <div className="grid grid-cols-2 gap-2 w-full md:w-auto md:flex md:flex-wrap md:items-center md:gap-2">
+                {DATE_PRESETS.filter(({ key }) => key !== 'custom').map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => applyPreset(key)}
+                    className="px-3 py-1.5 text-sm font-medium border transition"
+                    style={quickFilter === key
+                      ? { background: G, color: '#fff', borderColor: G }
+                      : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}
+                  >
+                    {label}
+                  </button>
+                ))}
                 <button
-                  key={key}
-                  onClick={() => applyPreset(key)}
-                  className="px-3 py-1.5 text-sm font-medium border transition"
-                  style={quickFilter === key
+                  onClick={() => applyPreset('custom')}
+                  className="col-span-2 md:col-auto px-3 py-1.5 text-sm font-medium border transition"
+                  style={quickFilter === 'custom'
                     ? { background: G, color: '#fff', borderColor: G }
                     : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}
                 >
-                  {label}
+                  Custom Range
                 </button>
-              ))}
-              {quickFilter === 'custom' && (
-                <DateRangePicker
-                  from={startDate} to={endDate}
-                  onChange={(f, t) => { setStartDate(f); setEndDate(t); setPage(1); }}
-                  placeholder="Pick date range"
-                />
-              )}
+                {quickFilter === 'custom' && (
+                  <DateRangePicker
+                    className="col-span-2 md:col-auto"
+                    from={startDate} to={endDate}
+                    onChange={(f, t) => { setStartDate(f); setEndDate(t); setPage(1); }}
+                    placeholder="Pick date range"
+                  />
+                )}
+              </div>
 
               {/* Status */}
               <Select

@@ -228,14 +228,14 @@ export default function AdminTransactions() {
           {/* Filter panel */}
           <div className="bg-white border border-gray-200">
 
-            {/* Row 1 — date presets (scrollable, no dropdowns) */}
-            <div className="px-4 pt-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-none border-b border-gray-100">
-              <span className="text-xs text-gray-400 font-medium shrink-0">Date:</span>
-              {RANGES.map((r) => (
+            {/* Row 1 — date presets (2-up grid on mobile, scrollable row on desktop) */}
+            <div className="px-4 pt-3 pb-2 grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:gap-2 md:overflow-x-auto md:scrollbar-none border-b border-gray-100">
+              <span className="hidden md:inline text-xs text-gray-400 font-medium shrink-0">Date:</span>
+              {RANGES.filter((r) => r.value !== 'custom').map((r) => (
                 <button
                   key={r.value}
                   onClick={() => applyRange(r.value)}
-                  className="px-3 py-1.5 text-xs font-semibold border transition shrink-0 whitespace-nowrap"
+                  className="px-3 py-1.5 text-xs font-semibold border transition md:shrink-0 md:whitespace-nowrap"
                   style={range === r.value
                     ? { background: G, color: '#fff', borderColor: G }
                     : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}
@@ -243,8 +243,18 @@ export default function AdminTransactions() {
                   {r.label}
                 </button>
               ))}
+              <button
+                onClick={() => applyRange('custom')}
+                className="col-span-2 md:col-auto px-3 py-1.5 text-xs font-semibold border transition md:shrink-0 md:whitespace-nowrap"
+                style={range === 'custom'
+                  ? { background: G, color: '#fff', borderColor: G }
+                  : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}
+              >
+                Custom Range
+              </button>
               {range === 'custom' && (
                 <DateRangePicker
+                  className="col-span-2 md:col-auto"
                   from={from} to={to}
                   onChange={(f, t) => { setFrom(f); setTo(t); }}
                   placeholder="Pick date range"

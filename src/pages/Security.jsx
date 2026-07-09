@@ -309,16 +309,16 @@ function LoginHistory({ onBlockIP }) {
 
             {/* ── Date preset chips ── */}
             <div className="bg-white border border-gray-200 p-4 space-y-3">
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
+                <div className="flex items-center gap-2 md:overflow-x-auto md:scrollbar-none">
+                    <span className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
                         <Calendar size={12} /> Date Range
                     </span>
-                    <div className="flex gap-1.5 shrink-0">
-                        {PRESET_OPTS.map(({ key, label }) => (
+                    <div className="grid grid-cols-2 gap-1.5 w-full md:flex md:w-auto md:shrink-0">
+                        {PRESET_OPTS.filter(({ key }) => key !== 'custom').map(({ key, label }) => (
                             <button
                                 key={key}
                                 onClick={() => applyPreset(key)}
-                                className="px-3 py-1.5 text-xs font-semibold border transition whitespace-nowrap"
+                                className="px-3 py-1.5 text-xs font-semibold border transition md:whitespace-nowrap"
                                 style={preset === key
                                     ? { background: G, borderColor: G, color: '#fff' }
                                     : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }}
@@ -326,6 +326,15 @@ function LoginHistory({ onBlockIP }) {
                                 {label}
                             </button>
                         ))}
+                        <button
+                            onClick={() => applyPreset('custom')}
+                            className="col-span-2 md:col-auto px-3 py-1.5 text-xs font-semibold border transition md:whitespace-nowrap"
+                            style={preset === 'custom'
+                                ? { background: G, borderColor: G, color: '#fff' }
+                                : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }}
+                        >
+                            Custom
+                        </button>
                     </div>
                 </div>
 

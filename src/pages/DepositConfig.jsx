@@ -11,10 +11,11 @@ const GH = '#2e6437';
 const CHANNEL_META = {
     watchpays: { label: 'Watch Pay',  sub: 'Gateway',      color: '#7c3aed', bg: '#f5f3ff', defaultMin: 100,  defaultMax: 80000   },
     jazpays:   { label: 'Jaz Pay',    sub: 'Gateway',      color: '#2563eb', bg: '#eff6ff', defaultMin: 100,  defaultMax: 80000   },
+    bondpay:   { label: 'BondPay',    sub: 'Gateway',      color: '#ea580c', bg: '#fff7ed', defaultMin: 100,  defaultMax: 80000   },
     trx:       { label: 'TRX',        sub: 'TRON Network', color: '#dc2626', bg: '#fef2f2', defaultMin: 100,  defaultMax: 1000000 },
     usdt:      { label: 'USDT TRC20', sub: 'Tether',       color: '#059669', bg: '#ecfdf5', defaultMin: 5000, defaultMax: 1000000 },
 };
-const ALL_CHANNEL_IDS = ['watchpays', 'jazpays', 'trx', 'usdt'];
+const ALL_CHANNEL_IDS = ['watchpays', 'jazpays', 'bondpay', 'trx', 'usdt'];
 const DEFAULT_AMOUNTS  = [100, 500, 1000, 2000, 5000, 10000, 20000, 50000];
 
 // ── Chip drag-and-drop ────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ export default function DepositConfig() {
             const { data } = await axiosInstance.get('/deposit-config');
             const cfg = data.data || {};
             setConfig(cfg);
-            if (cfg.channelOrder?.length === 4) setChannelOrder(cfg.channelOrder);
+            if (cfg.channelOrder?.length === ALL_CHANNEL_IDS.length) setChannelOrder(cfg.channelOrder);
             else setChannelOrder(ALL_CHANNEL_IDS);
         } catch { notify.error('Failed to load deposit config'); }
         finally  { setLoading(false); }

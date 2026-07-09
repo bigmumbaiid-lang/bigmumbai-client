@@ -20,20 +20,15 @@ const PRESETS = [
   { key: 'custom',  label: 'Custom'      },
 ];
 
-const IST_OFFSET = 330 * 60000;
 // Returns YYYY-MM-DD in IST, daysAgo=0 → today
 const getISTDateStr = (daysAgo = 0) =>
-  new Date(Date.now() + IST_OFFSET - daysAgo * 86400000).toISOString().split('T')[0];
+  new Date(Date.now() + 330 * 60000 - daysAgo * 86400000).toISOString().split('T')[0];
 
-// All preset date windows computed in IST
 const getPresetParams = (preset, custom) => {
-  if (preset === 'alltime') return { range: 'alltime' };
-  if (preset === 'custom')  return { startDate: custom.startDate, endDate: custom.endDate };
-  const today = getISTDateStr(0);
-  if (preset === 'today')   return { startDate: today, endDate: today };
-  if (preset === 'last7')   return { startDate: getISTDateStr(6),  endDate: today };
-  if (preset === 'last30')  return { startDate: getISTDateStr(29), endDate: today };
-  return { range: preset };
+  if (preset === 'custom') return { startDate: custom.startDate, endDate: custom.endDate };
+  // Presets use the range= param so the server computes the window itself
+  // (avoids date-string UTC-parse ambiguity on the backend)
+  return { range: preset }; // 'today' | 'last7' | 'last30' | 'alltime'
 };
 
 const EMPTY = {
@@ -123,8 +118,8 @@ function Dashboard() {
   }, [preset, custom]);
 
   useEffect(() => {
-    if (preset !== 'custom') fetchStats();
-  }, [preset]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (preset !== 'custom' || (custom.startDate && custom.endDate)) fetchStats();
+  }, [preset, custom, fetchStats]);
 
   const d = stats.deposits;
   const w = stats.withdrawals;
@@ -133,6 +128,7 @@ function Dashboard() {
   const channels = [
     { key: 'watchpays', label: 'WatchPays',  bar: '#7c3aed' },
     { key: 'jazpays',   label: 'JazPays',    bar: '#2563eb' },
+    { key: 'bondpay',   label: 'BondPay',    bar: '#ea580c' },
     { key: 'usdt',      label: 'USDT TRC20', bar: '#059669' },
     { key: 'trx',       label: 'TRX TRC20',  bar: '#1d4ed8' },
   ];
@@ -168,28 +164,35 @@ function Dashboard() {
               })}
               {preset === 'custom' && (
                 <DateRangePicker from={custom.startDate} to={custom.endDate}
-                  onChange={(f, t) => { setCustom({ startDate: f, endDate: t }); if (f && t) fetchStats(); }}
+                  onChange={(f, t) => setCustom({ startDate: f, endDate: t })}
                   placeholder="Pick date range" />
               )}
             </div>
           </div>
-          {/* Mobile preset buttons — scrollable row */}
-          <div className="flex md:hidden items-center gap-2 mt-2 overflow-x-auto scrollbar-none">
-            {PRESETS.map((p) => {
+          {/* Mobile preset buttons — 2-up grid, custom + picker full width */}
+          <div className="grid grid-cols-2 md:hidden gap-2 mt-2">
+            {PRESETS.filter((p) => p.key !== 'custom').map((p) => {
               const active = preset === p.key;
               return (
                 <button
                   key={p.key}
                   onClick={() => setPreset(p.key)}
-                  className="px-3 py-1.5 text-sm font-semibold border transition shrink-0"
+                  className="px-3 py-1.5 text-sm font-semibold border transition"
                   style={active ? { background: G, borderColor: G, color: '#fff' } : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }}
                 >{p.label}</button>
               );
             })}
+            <button
+              onClick={() => setPreset('custom')}
+              className="col-span-2 px-3 py-1.5 text-sm font-semibold border transition"
+              style={preset === 'custom' ? { background: G, borderColor: G, color: '#fff' } : { background: '#fff', borderColor: '#d1d5db', color: '#374151' }}
+            >Custom</button>
             {preset === 'custom' && (
-              <DateRangePicker from={custom.startDate} to={custom.endDate}
-                onChange={(f, t) => { setCustom({ startDate: f, endDate: t }); if (f && t) fetchStats(); }}
-                placeholder="Pick date range" />
+              <div className="col-span-2">
+                <DateRangePicker from={custom.startDate} to={custom.endDate}
+                  onChange={(f, t) => setCustom({ startDate: f, endDate: t })}
+                  placeholder="Pick date range" />
+              </div>
             )}
           </div>
         </header>

@@ -327,20 +327,28 @@ export default function TrxDeposits() {
                             </div>
                         </div>
 
-                        {/* Row 2 — date presets (scrollable on mobile) */}
-                        <div className="px-4 pt-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-none border-b border-gray-100">
-                            <span className="text-xs text-gray-400 font-medium shrink-0">Date:</span>
-                            {DATE_PRESETS.map(p => (
+                        {/* Row 2 — date presets (2-up grid on mobile, scrollable row on desktop) */}
+                        <div className="px-4 pt-3 pb-2 grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:gap-2 md:overflow-x-auto md:scrollbar-none border-b border-gray-100">
+                            <span className="hidden md:inline text-xs text-gray-400 font-medium shrink-0">Date:</span>
+                            {DATE_PRESETS.filter(p => p.key !== 'custom').map(p => (
                                 <button key={p.key} onClick={() => handlePreset(p.key)}
-                                    className="px-3 py-1.5 text-sm font-medium border transition shrink-0 whitespace-nowrap"
+                                    className="px-3 py-1.5 text-sm font-medium border transition md:shrink-0 md:whitespace-nowrap"
                                     style={datePreset === p.key
                                         ? { background: G, color: '#fff', borderColor: G }
                                         : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
                                     {p.label}
                                 </button>
                             ))}
+                            <button onClick={() => handlePreset('custom')}
+                                className="col-span-2 md:col-auto px-3 py-1.5 text-sm font-medium border transition md:shrink-0 md:whitespace-nowrap"
+                                style={datePreset === 'custom'
+                                    ? { background: G, color: '#fff', borderColor: G }
+                                    : { background: '#fff', color: '#374151', borderColor: '#d1d5db' }}>
+                                Custom Range
+                            </button>
                             {datePreset === 'custom' && (
                                 <DateRangePicker
+                                    className="col-span-2 md:col-auto"
                                     from={customFrom} to={customTo}
                                     onChange={(f, t) => { setCustomFrom(f); setCustomTo(t); setPage(1); }}
                                     placeholder="Pick date range"
