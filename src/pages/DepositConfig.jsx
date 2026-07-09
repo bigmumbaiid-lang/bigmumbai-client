@@ -2,11 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import axiosInstance from '../utils/axios';
 import { useNotify } from '../context/NotifyContext';
-import { Settings, RefreshCw, RotateCcw, Save, X, Plus, GripVertical, Eye, EyeOff } from 'lucide-react';
+import { Settings, RefreshCw, RotateCcw, Save, X, Plus, GripVertical, Eye, EyeOff, Check } from 'lucide-react';
 
-const G  = '#3a7d44';
-const GL = '#e8f5ea';
-const GH = '#2e6437';
+const G = '#3a7d44';
 
 const CHANNEL_META = {
     watchpays: { label: 'Watch Pay',  sub: 'Gateway',      color: '#7c3aed', bg: '#f5f3ff', defaultMin: 100,  defaultMax: 80000   },
@@ -15,69 +13,186 @@ const CHANNEL_META = {
     trx:       { label: 'TRX',        sub: 'TRON Network', color: '#dc2626', bg: '#fef2f2', defaultMin: 100,  defaultMax: 1000000 },
     usdt:      { label: 'USDT TRC20', sub: 'Tether',       color: '#059669', bg: '#ecfdf5', defaultMin: 5000, defaultMax: 1000000 },
 };
-const ALL_CHANNEL_IDS = ['watchpays', 'jazpays', 'bondpay', 'trx', 'usdt'];
+const ALL_CHANNEL_IDS  = ['watchpays', 'jazpays', 'bondpay', 'trx', 'usdt'];
 const DEFAULT_AMOUNTS  = [100, 500, 1000, 2000, 5000, 10000, 20000, 50000];
 
-// ── Chip drag-and-drop ────────────────────────────────────────────────────────
+// ─── Beautiful editable chips with pointer drag (desktop + mobile) ─────────────
 function AmountChips({ amounts, setAmounts, setDirty, color, bg }) {
-    const dragIdx = useRef(null);
+    const [draggingIdx, setDraggingIdx] = useState(null);
+    const [editingIdx,  setEditingIdx ] = useState(null);
+    const [editVal,     setEditVal    ] = useState('');
+    const chipRefs  = useRef([]);
+    const dragState = useRef(null);
 
-    const onDragStart = (i) => { dragIdx.current = i; };
-    const onDragOver  = (e, i) => {
+    const onChipPointerDown = (e, i) => {
+        if (editingIdx !== null) return;
+        if (e.button === 2) return;
         e.preventDefault();
-        if (dragIdx.current === null || dragIdx.current === i) return;
-        const next = [...amounts];
-        const [moved] = next.splice(dragIdx.current, 1);
-        next.splice(i, 0, moved);
-        setAmounts(next);
-        dragIdx.current = i;
-        setDirty(true);
+        dragState.current = { fromIdx: i };
+        setDraggingIdx(i);
     };
-    const onDragEnd = () => { dragIdx.current = null; };
+
+    const onMove = (e) => {
+        if (!dragState.current) return;
+        const { fromIdx } = dragState.current;
+        for (let j = 0; j < chipRefs.current.length; j++) {
+            if (j === fromIdx) continue;
+            const rect = chipRefs.current[j]?.getBoundingClientRect();
+            if (!rect) continue;
+            if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top  && e.clientY <= rect.bottom) {
+                const next = [...amounts];
+                const [moved] = next.splice(fromIdx, 1);
+                next.splice(j, 0, moved);
+                setAmounts(next);
+                dragState.current.fromIdx = j;
+                setDraggingIdx(j);
+                setDirty(true);
+                break;
+            }
+        }
+    };
+
+    const endDrag = () => {
+        dragState.current = null;
+        setDraggingIdx(null);
+    };
+
+    const commitEdit = (i) => {
+        const n = Number(editVal);
+        if (n > 0 && n !== amounts[i]) {
+            const next = [...amounts];
+            next[i] = n;
+            setAmounts(next);
+            setDirty(true);
+        }
+        setEditingIdx(null);
+        setEditVal('');
+    };
+
+    chipRefs.current.length = amounts.length;
 
     return (
-        <div className="flex flex-wrap gap-1.5 mb-2 min-h-[32px]">
-            {amounts.map((amt, i) => (
-                <span
-                    key={`${amt}-${i}`}
-                    draggable
-                    onDragStart={() => onDragStart(i)}
-                    onDragOver={e => onDragOver(e, i)}
-                    onDragEnd={onDragEnd}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold border rounded-full cursor-grab active:cursor-grabbing select-none"
-                    style={{ borderColor: color + '60', background: bg, color }}
-                >
-                    <GripVertical size={9} className="opacity-40 shrink-0" />
-                    ₹{amt.toLocaleString('en-US')}
-                    <button type="button" onClick={() => {
-                        setAmounts(amounts.filter((_, idx) => idx !== i));
-                        setDirty(true);
-                    }} className="hover:opacity-70 transition">
-                        <X size={9} />
-                    </button>
-                </span>
-            ))}
+        <div
+            className="flex flex-wrap gap-2 mb-2 min-h-[40px]"
+            onPointerMove={onMove}
+            onPointerUp={endDrag}
+            onPointerLeave={endDrag}
+            style={{ touchAction: draggingIdx !== null ? 'none' : 'auto', userSelect: 'none' }}
+        >
+            {amounts.map((amt, i) => {
+                const active = draggingIdx === i;
+                const dimmed = draggingIdx !== null && !active;
+                const isEdit = editingIdx  === i;
+
+                return (
+                    <div
+                        key={i}
+                        ref={el => { chipRefs.current[i] = el; }}
+                        className="group inline-flex items-center rounded-full"
+                        style={{
+                            gap: '4px',
+                            padding: isEdit ? '5px 10px' : '5px 10px 5px 7px',
+                            background: active
+                                ? `linear-gradient(135deg, ${color}, ${color}bb)`
+                                : bg,
+                            color:  active ? '#fff' : color,
+                            border: `1.5px solid ${active ? color : color + '35'}`,
+                            boxShadow: active
+                                ? `0 8px 24px ${color}45`
+                                : `0 1px 4px ${color}12`,
+                            transform: active ? 'scale(1.1) rotate(-1deg)' : 'scale(1)',
+                            opacity:  dimmed ? 0.5 : 1,
+                            zIndex:  active ? 20 : 1,
+                            position: 'relative',
+                            cursor:  isEdit ? 'text' : (active ? 'grabbing' : 'grab'),
+                            touchAction: 'none',
+                            transition: 'transform 0.13s ease, box-shadow 0.13s ease, opacity 0.13s ease',
+                        }}
+                        onPointerDown={e => !isEdit && onChipPointerDown(e, i)}
+                    >
+                        {!isEdit && (
+                            <GripVertical size={9} style={{ opacity: 0.28, flexShrink: 0 }} />
+                        )}
+
+                        {isEdit ? (
+                            <span className="inline-flex items-center gap-0.5">
+                                <span className="text-xs font-bold" style={{ color }}>₹</span>
+                                <input
+                                    autoFocus
+                                    type="number"
+                                    min="1"
+                                    value={editVal}
+                                    onChange={e => setEditVal(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter')  commitEdit(i);
+                                        if (e.key === 'Escape') { setEditingIdx(null); setEditVal(''); }
+                                    }}
+                                    onBlur={() => commitEdit(i)}
+                                    onPointerDown={e => e.stopPropagation()}
+                                    className="w-16 bg-transparent focus:outline-none text-xs font-bold"
+                                    style={{ color }}
+                                />
+                                <button
+                                    type="button"
+                                    onPointerDown={e => e.stopPropagation()}
+                                    onClick={() => commitEdit(i)}
+                                    style={{ color, opacity: 0.8 }}
+                                >
+                                    <Check size={10} />
+                                </button>
+                            </span>
+                        ) : (
+                            <span
+                                className="text-xs font-bold leading-none"
+                                onDoubleClick={() => {
+                                    setEditingIdx(i);
+                                    setEditVal(String(amt));
+                                }}
+                                title="Double-click to edit"
+                            >
+                                ₹{amt.toLocaleString('en-IN')}
+                            </span>
+                        )}
+
+                        {!isEdit && (
+                            <button
+                                type="button"
+                                onPointerDown={e => e.stopPropagation()}
+                                onClick={() => {
+                                    setAmounts(amounts.filter((_, idx) => idx !== i));
+                                    setDirty(true);
+                                }}
+                                className="ml-0.5 opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
+                                title="Remove"
+                            >
+                                <X size={9} />
+                            </button>
+                        )}
+                    </div>
+                );
+            })}
             {amounts.length === 0 && (
-                <span className="text-xs text-gray-300 italic">No amounts — add one below</span>
+                <span className="text-xs text-gray-300 italic self-center">No amounts — add one below</span>
             )}
         </div>
     );
 }
 
-// ── Per-channel card ──────────────────────────────────────────────────────────
-function ChannelCard({ channelId, savedConfig, onSave, onReset, dragHandleProps }) {
+// ─── Per-channel card ──────────────────────────────────────────────────────────
+function ChannelCard({ channelId, savedConfig, onSave, onReset, isDragging, isOtherDragging, dragHandleProps }) {
     const ch     = CHANNEL_META[channelId];
     const notify = useNotify();
-    const saved = savedConfig || {};
+    const saved  = savedConfig || {};
     const isCustom = (saved.amounts?.length > 0) || saved.min != null || saved.max != null || saved.enabled === false;
 
-    const [amounts,  setAmounts ] = useState(saved.amounts?.length ? saved.amounts : DEFAULT_AMOUNTS);
-    const [minVal,   setMinVal  ] = useState(saved.min     != null ? String(saved.min)  : String(ch.defaultMin));
-    const [maxVal,   setMaxVal  ] = useState(saved.max     != null ? String(saved.max)  : String(ch.defaultMax));
-    const [enabled,  setEnabled ] = useState(saved.enabled !== false);
-    const [newAmt,   setNewAmt  ] = useState('');
-    const [saving,   setSaving  ] = useState(false);
-    const [dirty,    setDirty   ] = useState(false);
+    const [amounts, setAmounts] = useState(saved.amounts?.length ? saved.amounts : DEFAULT_AMOUNTS);
+    const [minVal,  setMinVal ] = useState(saved.min  != null ? String(saved.min)  : String(ch.defaultMin));
+    const [maxVal,  setMaxVal ] = useState(saved.max  != null ? String(saved.max)  : String(ch.defaultMax));
+    const [enabled, setEnabled] = useState(saved.enabled !== false);
+    const [newAmt,  setNewAmt ] = useState('');
+    const [saving,  setSaving ] = useState(false);
+    const [dirty,   setDirty  ] = useState(false);
 
     useEffect(() => {
         const s = savedConfig || {};
@@ -92,7 +207,8 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, dragHandleProps 
         const n = Number(newAmt);
         if (!n || n <= 0) return;
         setAmounts(prev => [...prev, n]);
-        setNewAmt(''); setDirty(true);
+        setNewAmt('');
+        setDirty(true);
     };
 
     const handleToggleEnabled = async () => {
@@ -123,28 +239,51 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, dragHandleProps 
     };
 
     return (
-        <div className={`bg-white border overflow-hidden transition-opacity ${enabled ? 'border-gray-200' : 'border-gray-200 opacity-60'}`}>
+        <div
+            className="bg-white overflow-hidden"
+            style={{
+                borderRadius: '14px',
+                border: `1.5px solid ${isDragging ? ch.color + '70' : '#e5e7eb'}`,
+                opacity: isOtherDragging ? 0.48 : 1,
+                transform: isDragging ? 'scale(1.025) rotate(0.5deg)' : 'scale(1)',
+                boxShadow: isDragging
+                    ? `0 16px 48px ${ch.color}28`
+                    : '0 1px 4px rgba(0,0,0,0.06)',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
+                position: 'relative',
+                zIndex: isDragging ? 10 : 1,
+            }}
+        >
             {/* Header */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100" style={{ background: ch.bg }}>
-                {/* Drag handle for card */}
-                <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 shrink-0">
-                    <GripVertical size={16} />
+            <div
+                className="flex items-center gap-2.5 px-4 py-3 border-b border-gray-100"
+                style={{ background: ch.bg }}
+            >
+                <div
+                    {...dragHandleProps}
+                    className="text-gray-300 hover:text-gray-500 shrink-0 transition-colors"
+                    style={{ cursor: 'grab', touchAction: 'none' }}
+                    title="Drag to reorder"
+                >
+                    <GripVertical size={17} />
                 </div>
 
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: ch.color }}>
+                <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-extrabold shrink-0 shadow"
+                    style={{ background: `linear-gradient(135deg, ${ch.color}, ${ch.color}bb)` }}
+                >
                     {ch.label.slice(0, 1)}
                 </div>
+
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate">{ch.label}</p>
-                    <p className="text-[11px] text-gray-400">{ch.sub}</p>
+                    <p className="text-[11px] text-gray-400 leading-none mt-0.5">{ch.sub}</p>
                 </div>
 
-                {/* Enable/disable toggle */}
                 <button
                     onClick={handleToggleEnabled}
                     title={enabled ? 'Hide channel' : 'Show channel'}
-                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold border transition shrink-0"
+                    className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold border rounded-full transition shrink-0"
                     style={enabled
                         ? { borderColor: ch.color + '50', color: ch.color, background: 'white' }
                         : { borderColor: '#d1d5db', color: '#9ca3af', background: '#f9fafb' }
@@ -155,8 +294,10 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, dragHandleProps 
                 </button>
 
                 {isCustom && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white shrink-0"
-                        style={{ background: ch.color }}>
+                    <span
+                        className="text-[10px] font-extrabold px-2.5 py-1 rounded-full text-white shrink-0"
+                        style={{ background: ch.color }}
+                    >
                         Custom
                     </span>
                 )}
@@ -167,21 +308,30 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, dragHandleProps 
                 <div className="grid grid-cols-2 gap-3">
                     {[['Min', minVal, setMinVal], ['Max', maxVal, setMaxVal]].map(([label, val, setter]) => (
                         <div key={label}>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label} (₹)</label>
-                            <div className="flex items-center border border-gray-200 bg-gray-50 focus-within:bg-white focus-within:border-gray-400 transition px-3 py-2 gap-1">
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+                                {label} (₹)
+                            </label>
+                            <div className="flex items-center border border-gray-200 bg-gray-50 focus-within:bg-white focus-within:border-gray-400 transition rounded-lg px-3 py-2 gap-1">
                                 <span className="text-gray-400 text-sm">₹</span>
-                                <input type="number" min="1" value={val}
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={val}
                                     onChange={e => { setter(e.target.value); setDirty(true); }}
-                                    className="flex-1 text-sm font-semibold text-gray-800 bg-transparent focus:outline-none" />
+                                    className="flex-1 text-sm font-semibold text-gray-800 bg-transparent focus:outline-none"
+                                />
                             </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Quick amounts with drag-and-drop */}
+                {/* Quick amounts */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                        Quick Select Amounts <span className="font-normal text-gray-400 normal-case">(drag to reorder)</span>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                        Quick Select Amounts{' '}
+                        <span className="font-normal normal-case opacity-60">
+                            (drag to reorder · double-click to edit)
+                        </span>
                     </label>
                     <AmountChips
                         amounts={amounts}
@@ -190,39 +340,51 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, dragHandleProps 
                         color={ch.color}
                         bg={ch.bg}
                     />
-                    <div className="flex gap-2 mt-1">
-                        <div className="flex-1 flex items-center border border-gray-200 bg-gray-50 focus-within:bg-white focus-within:border-gray-400 transition px-3 py-1.5 gap-1">
+                    <div className="flex gap-2 mt-2">
+                        <div className="flex-1 flex items-center border border-gray-200 bg-gray-50 focus-within:bg-white focus-within:border-gray-400 transition rounded-lg px-3 py-1.5 gap-1">
                             <span className="text-gray-400 text-sm">₹</span>
-                            <input type="number" min="1" value={newAmt}
+                            <input
+                                type="number"
+                                min="1"
+                                value={newAmt}
                                 onChange={e => setNewAmt(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && addAmount()}
                                 placeholder="Add amount…"
-                                className="flex-1 text-sm text-gray-800 bg-transparent focus:outline-none" />
+                                className="flex-1 text-sm text-gray-800 bg-transparent focus:outline-none"
+                            />
                         </div>
-                        <button type="button" onClick={addAmount}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white transition"
-                            style={{ background: ch.color }}>
+                        <button
+                            type="button"
+                            onClick={addAmount}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white rounded-lg transition hover:opacity-90 active:scale-95"
+                            style={{ background: ch.color }}
+                        >
                             <Plus size={12} /> Add
                         </button>
                     </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-                    <button onClick={handleSave} disabled={saving || !dirty}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-40"
-                        style={{ background: G }}>
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <button
+                        onClick={handleSave}
+                        disabled={saving || !dirty}
+                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white rounded-lg transition disabled:opacity-40 hover:opacity-90 active:scale-95"
+                        style={{ background: G }}
+                    >
                         {saving ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
                         {saving ? 'Saving…' : 'Save'}
                     </button>
                     {isCustom && (
-                        <button onClick={() => onReset(channelId)}
-                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-gray-200 text-gray-500 hover:border-rose-300 hover:text-rose-500 hover:bg-rose-50 transition">
+                        <button
+                            onClick={() => onReset(channelId)}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-gray-200 text-gray-500 hover:border-rose-300 hover:text-rose-500 hover:bg-rose-50 transition rounded-lg"
+                        >
                             <RotateCcw size={12} /> Reset
                         </button>
                     )}
                     {dirty && !saving && (
-                        <span className="ml-auto text-[10px] text-amber-500 font-semibold">Unsaved changes</span>
+                        <span className="ml-auto text-[10px] text-amber-500 font-bold">Unsaved changes</span>
                     )}
                 </div>
             </div>
@@ -230,16 +392,18 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, dragHandleProps 
     );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ─── Main page ─────────────────────────────────────────────────────────────────
 export default function DepositConfig() {
     const notify = useNotify();
     const [config,       setConfig      ] = useState(null);
     const [loading,      setLoading     ] = useState(true);
     const [channelOrder, setChannelOrder] = useState(ALL_CHANNEL_IDS);
-
-    // Card drag-and-drop
-    const cardDragIdx  = useRef(null);
     const [draggingCard, setDraggingCard] = useState(null);
+
+    const cardRefs        = useRef([]);
+    const cardDragState   = useRef(null);
+    const channelOrderRef = useRef(channelOrder);
+    useEffect(() => { channelOrderRef.current = channelOrder; }, [channelOrder]);
 
     const fetchConfig = async () => {
         setLoading(true);
@@ -267,7 +431,7 @@ export default function DepositConfig() {
 
     const handleReset = async (channelId) => {
         const ok = await notify.confirm({
-            title: `Reset ${CHANNEL_META[channelId].label}?`,
+            title:   `Reset ${CHANNEL_META[channelId].label}?`,
             message: 'Remove custom settings and restore defaults.',
             confirmLabel: 'Reset', variant: 'warning',
         });
@@ -281,21 +445,39 @@ export default function DepositConfig() {
         }
     };
 
-    // Card drag handlers
-    const onCardDragStart = (i) => { cardDragIdx.current = i; setDraggingCard(i); };
-    const onCardDragOver  = (e, i) => {
+    // Card pointer drag (works on desktop + mobile)
+    const onCardHandlePointerDown = (e, i) => {
         e.preventDefault();
-        if (cardDragIdx.current === null || cardDragIdx.current === i) return;
-        const next = [...channelOrder];
-        const [moved] = next.splice(cardDragIdx.current, 1);
-        next.splice(i, 0, moved);
-        setChannelOrder(next);
-        cardDragIdx.current = i;
+        cardDragState.current = { fromIdx: i };
         setDraggingCard(i);
     };
-    const onCardDragEnd = async () => {
-        const finalOrder = channelOrder;
-        cardDragIdx.current = null;
+
+    const onGridPointerMove = (e) => {
+        if (!cardDragState.current) return;
+        const { fromIdx } = cardDragState.current;
+        for (let j = 0; j < cardRefs.current.length; j++) {
+            if (j === fromIdx) continue;
+            const rect = cardRefs.current[j]?.getBoundingClientRect();
+            if (!rect) continue;
+            if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top  && e.clientY <= rect.bottom) {
+                setChannelOrder(prev => {
+                    const next = [...prev];
+                    const [moved] = next.splice(fromIdx, 1);
+                    next.splice(j, 0, moved);
+                    return next;
+                });
+                cardDragState.current.fromIdx = j;
+                setDraggingCard(j);
+                break;
+            }
+        }
+    };
+
+    const onGridPointerUp = async () => {
+        if (!cardDragState.current) return;
+        const finalOrder = [...channelOrderRef.current];
+        cardDragState.current = null;
         setDraggingCard(null);
         try {
             await axiosInstance.patch('/deposit-config/order', { order: finalOrder });
@@ -314,48 +496,53 @@ export default function DepositConfig() {
                             Configure amounts, limits, visibility and order per channel
                         </p>
                     </div>
-                    <button onClick={fetchConfig} disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition">
+                    <button
+                        onClick={fetchConfig}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition rounded-lg"
+                    >
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
                     </button>
                 </header>
 
                 <div className="p-4 md:p-6 lg:p-8">
-                    <div className="mb-5 flex items-start gap-3 px-4 py-3 border border-blue-200 bg-blue-50 text-xs text-blue-700">
+                    <div className="mb-5 flex items-start gap-3 px-4 py-3 border border-blue-200 bg-blue-50 rounded-xl text-xs text-blue-700">
                         <Settings size={14} className="shrink-0 mt-0.5" />
                         <span>
-                            Drag the <GripVertical size={10} className="inline" /> handle to reorder channels or amount chips.
-                            Toggle Visible/Hidden to show or hide a channel in the deposit page.
-                            Changes apply immediately on next user page load.
+                            Drag <GripVertical size={10} className="inline" /> to reorder channels or chips.
+                            Toggle Visible/Hidden to show or hide a channel.{' '}
+                            <strong>Double-click a chip to edit its value.</strong>
                         </span>
                     </div>
 
                     {loading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             {[...Array(4)].map((_, i) => (
-                                <div key={i} className="bg-white border border-gray-200 h-64 animate-pulse" />
+                                <div key={i} className="bg-white rounded-2xl border border-gray-200 h-64 animate-pulse" />
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div
+                            className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                            onPointerMove={onGridPointerMove}
+                            onPointerUp={onGridPointerUp}
+                            onPointerLeave={onGridPointerUp}
+                            style={{ touchAction: draggingCard !== null ? 'none' : 'auto' }}
+                        >
                             {channelOrder.map((chId, i) => (
                                 <div
                                     key={chId}
-                                    onDragOver={e => onCardDragOver(e, i)}
-                                    onDragEnd={onCardDragEnd}
-                                    style={{
-                                        opacity: draggingCard !== null && draggingCard !== i ? 0.45 : 1,
-                                        transition: 'opacity 0.15s ease',
-                                    }}
+                                    ref={el => { cardRefs.current[i] = el; }}
                                 >
                                     <ChannelCard
                                         channelId={chId}
                                         savedConfig={config?.[chId]}
                                         onSave={handleSave}
                                         onReset={handleReset}
+                                        isDragging={draggingCard === i}
+                                        isOtherDragging={draggingCard !== null && draggingCard !== i}
                                         dragHandleProps={{
-                                            draggable: true,
-                                            onDragStart: () => onCardDragStart(i),
+                                            onPointerDown: (e) => onCardHandlePointerDown(e, i),
                                         }}
                                     />
                                 </div>
