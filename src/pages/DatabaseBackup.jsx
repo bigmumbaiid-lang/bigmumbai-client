@@ -29,6 +29,7 @@ const COLLECTION_LABELS = {
     usdtDeposits:   'USDT Deposits',
     trxDeposits:    'TRX Deposits',
     royalSpinBets:  'Royal Spin Bets',
+    depositConfig:  'Deposit Config',
 };
 
 function StatRow({ label, count }) {

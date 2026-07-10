@@ -107,7 +107,15 @@ export default function Withdrawals() {
 
   const fetchStats = async () => {
     try {
-      const { data } = await api.get('/withdrawal/stats');
+      const params = {
+        ...(filterStatus && { status: filterStatus }),
+        ...(search       && { search: search.trim() }),
+        ...(startDate    && { startDate }),
+        ...(endDate      && { endDate }),
+        ...(minAmount    && { minAmount }),
+        ...(maxAmount    && { maxAmount }),
+      };
+      const { data } = await api.get('/withdrawal/stats', { params });
       if (data.success) setStats(data.stats);
     } catch (err) { console.error(err); }
   };
@@ -122,7 +130,10 @@ export default function Withdrawals() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, filterStatus, search, startDate, endDate, minAmount, maxAmount]);
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => {
+    fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStatus, search, startDate, endDate, minAmount, maxAmount]);
   useEffect(() => { if (page > totalPages) setPage(totalPages || 1); }, [totalPages]); // eslint-disable-line
 
   const applyPreset = (key) => {

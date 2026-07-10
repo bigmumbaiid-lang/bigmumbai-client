@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNotify } from '../context/NotifyContext';
 import {
   Search, Users as UsersIcon, ShieldCheck,
@@ -148,6 +148,26 @@ export default function Users() {
 
   const tabData    = { information: visibleUsers, accounts: users || [], bank: users || [], transfer: users || [] };
   const currentUsers = tabData[activeTab];
+
+  // 1-4 switch tabs, but only when not typing into a field or a modal is open
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (modal) return;
+      const el = document.activeElement;
+      const isTyping = el && (
+        el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ||
+        el.tagName === 'SELECT' || el.isContentEditable
+      );
+      if (isTyping) return;
+
+      const idx = ['1', '2', '3', '4'].indexOf(e.key);
+      if (idx === -1) return;
+      e.preventDefault();
+      setActiveTab(TABS[idx].key);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modal]);
 
   // ── Stat card ─────────────────────────────────────────────────────────────
   const MetricCard = ({ label, value, sub, icon: Icon, iconColor, iconBg }) => (

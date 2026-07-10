@@ -99,9 +99,17 @@ export default function Payments() {
 
   const fetchStats = async (from, to) => {
     try {
-      const params = { gatewayOnly: 1 };
-      if (from) params.startDate = from;
-      if (to)   params.endDate   = to;
+      const params = {
+        gatewayOnly: 1,
+        ...(from            && { startDate: from }),
+        ...(to              && { endDate: to }),
+        ...(filterStatus    && { status: filterStatus }),
+        ...(filterChannel   && { channel: filterChannel }),
+        ...(search          && { search: search.trim() }),
+        ...(exactUsername   && { exactUsername: exactUsername.trim() }),
+        ...(minAmount       && { minAmount: Number(minAmount) }),
+        ...(maxAmount       && { maxAmount: Number(maxAmount) }),
+      };
       const { data } = await api.get('/payment/stats', { params });
       if (data.success) setStats(data.stats);
     } catch (err) { console.error(err); }
@@ -120,7 +128,7 @@ export default function Payments() {
   useEffect(() => {
     fetchStats(startDate, endDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+  }, [startDate, endDate, filterStatus, filterChannel, search, exactUsername, minAmount, maxAmount]);
 
   useEffect(() => { if (page > totalPages) setPage(totalPages || 1); }, [totalPages]); // eslint-disable-line
 

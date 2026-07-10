@@ -16,13 +16,32 @@ const CHANNEL_META = {
 const ALL_CHANNEL_IDS  = ['watchpays', 'jazpays', 'bondpay', 'trx', 'usdt'];
 const DEFAULT_AMOUNTS  = [100, 500, 1000, 2000, 5000, 10000, 20000, 50000];
 
+// Blocks text selection anywhere on the page while a drag is active — scoping
+// `user-select: none` to just the dragged element isn't enough since fast
+// pointer movement during drag still triggers native selection on siblings/text.
+function useNoSelectWhileDragging(isDragging) {
+    useEffect(() => {
+        if (!isDragging) return;
+        const prev = document.body.style.userSelect;
+        document.body.style.userSelect = 'none';
+        document.body.style.webkitUserSelect = 'none';
+        return () => {
+            document.body.style.userSelect = prev;
+            document.body.style.webkitUserSelect = prev;
+        };
+    }, [isDragging]);
+}
+
 // ─── Beautiful editable chips with pointer drag (desktop + mobile) ─────────────
 function AmountChips({ amounts, setAmounts, setDirty, color, bg }) {
     const [draggingIdx, setDraggingIdx] = useState(null);
     const [editingIdx,  setEditingIdx ] = useState(null);
     const [editVal,     setEditVal    ] = useState('');
+    const [hoveredIdx,  setHoveredIdx ] = useState(null);
     const chipRefs  = useRef([]);
     const dragState = useRef(null);
+
+    useNoSelectWhileDragging(draggingIdx !== null);
 
     const onChipPointerDown = (e, i) => {
         if (editingIdx !== null) return;
@@ -81,43 +100,48 @@ function AmountChips({ amounts, setAmounts, setDirty, color, bg }) {
             style={{ touchAction: draggingIdx !== null ? 'none' : 'auto', userSelect: 'none' }}
         >
             {amounts.map((amt, i) => {
-                const active = draggingIdx === i;
-                const dimmed = draggingIdx !== null && !active;
-                const isEdit = editingIdx  === i;
+                const active  = draggingIdx === i;
+                const dimmed  = draggingIdx !== null && !active;
+                const isEdit  = editingIdx  === i;
+                const hovered = hoveredIdx === i && !active && !isEdit && draggingIdx === null;
 
                 return (
                     <div
                         key={i}
                         ref={el => { chipRefs.current[i] = el; }}
-                        className="group inline-flex items-center rounded-full"
+                        className="group inline-flex items-center justify-center rounded-full text-center"
                         style={{
                             gap: '4px',
-                            padding: isEdit ? '5px 10px' : '5px 10px 5px 7px',
+                            minWidth: 40,
+                            height: 40,
+                            padding: isEdit ? '0 14px' : '0 14px',
                             background: active
-                                ? `linear-gradient(135deg, ${color}, ${color}bb)`
-                                : bg,
+                                ? `linear-gradient(135deg, ${color}, ${color}b3)`
+                                : `${bg}`,
                             color:  active ? '#fff' : color,
-                            border: `1.5px solid ${active ? color : color + '35'}`,
+                            border: `1px solid ${active ? color : hovered ? color + '55' : color + '25'}`,
                             boxShadow: active
-                                ? `0 8px 24px ${color}45`
-                                : `0 1px 4px ${color}12`,
-                            transform: active ? 'scale(1.1) rotate(-1deg)' : 'scale(1)',
+                                ? `0 8px 20px ${color}3d`
+                                : hovered
+                                    ? `0 4px 12px ${color}22`
+                                    : `0 1px 2px ${color}0f`,
+                            transform: active
+                                ? 'scale(1.08)'
+                                : hovered ? 'translateY(-1px) scale(1.02)' : 'scale(1)',
                             opacity:  dimmed ? 0.5 : 1,
-                            zIndex:  active ? 20 : 1,
+                            zIndex:  active ? 20 : hovered ? 5 : 1,
                             position: 'relative',
                             cursor:  isEdit ? 'text' : (active ? 'grabbing' : 'grab'),
                             touchAction: 'none',
-                            transition: 'transform 0.13s ease, box-shadow 0.13s ease, opacity 0.13s ease',
+                            transition: 'transform 0.16s ease, box-shadow 0.16s ease, opacity 0.13s ease, border-color 0.16s ease',
                         }}
                         onPointerDown={e => !isEdit && onChipPointerDown(e, i)}
+                        onMouseEnter={() => setHoveredIdx(i)}
+                        onMouseLeave={() => setHoveredIdx(null)}
                     >
-                        {!isEdit && (
-                            <GripVertical size={9} style={{ opacity: 0.28, flexShrink: 0 }} />
-                        )}
-
                         {isEdit ? (
-                            <span className="inline-flex items-center gap-0.5">
-                                <span className="text-xs font-bold" style={{ color }}>₹</span>
+                            <span className="inline-flex items-center gap-1">
+                                <span className="text-xs font-semibold" style={{ color }}>₹</span>
                                 <input
                                     autoFocus
                                     type="number"
@@ -130,21 +154,21 @@ function AmountChips({ amounts, setAmounts, setDirty, color, bg }) {
                                     }}
                                     onBlur={() => commitEdit(i)}
                                     onPointerDown={e => e.stopPropagation()}
-                                    className="w-16 bg-transparent focus:outline-none text-xs font-bold"
+                                    className="w-16 bg-transparent focus:outline-none text-xs font-semibold"
                                     style={{ color }}
                                 />
                                 <button
                                     type="button"
                                     onPointerDown={e => e.stopPropagation()}
                                     onClick={() => commitEdit(i)}
-                                    style={{ color, opacity: 0.8 }}
+                                    style={{ color, opacity: 0.75 }}
                                 >
                                     <Check size={10} />
                                 </button>
                             </span>
                         ) : (
                             <span
-                                className="text-xs font-bold leading-none"
+                                className="text-[12px] font-semibold leading-none whitespace-nowrap"
                                 onDoubleClick={() => {
                                     setEditingIdx(i);
                                     setEditVal(String(amt));
@@ -163,10 +187,15 @@ function AmountChips({ amounts, setAmounts, setDirty, color, bg }) {
                                     setAmounts(amounts.filter((_, idx) => idx !== i));
                                     setDirty(true);
                                 }}
-                                className="ml-0.5 opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
+                                className="flex items-center justify-center rounded-full shrink-0 opacity-0 group-hover:opacity-100 transition-all hover:!opacity-100"
+                                style={{
+                                    width: 14, height: 14,
+                                    background: active ? 'rgba(255,255,255,0.25)' : `${color}18`,
+                                    color: active ? '#fff' : color,
+                                }}
                                 title="Remove"
                             >
-                                <X size={9} />
+                                <X size={8} strokeWidth={2.5} />
                             </button>
                         )}
                     </div>
@@ -185,6 +214,7 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, isDragging, isOt
     const notify = useNotify();
     const saved  = savedConfig || {};
     const isCustom = (saved.amounts?.length > 0) || saved.min != null || saved.max != null || saved.enabled === false;
+    const [cardHovered, setCardHovered] = useState(false);
 
     const [amounts, setAmounts] = useState(saved.amounts?.length ? saved.amounts : DEFAULT_AMOUNTS);
     const [minVal,  setMinVal ] = useState(saved.min  != null ? String(saved.min)  : String(ch.defaultMin));
@@ -241,23 +271,30 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, isDragging, isOt
     return (
         <div
             className="bg-white overflow-hidden"
+            onMouseEnter={() => setCardHovered(true)}
+            onMouseLeave={() => setCardHovered(false)}
             style={{
-                borderRadius: '14px',
-                border: `1.5px solid ${isDragging ? ch.color + '70' : '#e5e7eb'}`,
+                borderRadius: '16px',
+                border: `1.5px solid ${isDragging ? ch.color + '70' : cardHovered ? ch.color + '35' : '#e9ebee'}`,
                 opacity: isOtherDragging ? 0.48 : 1,
-                transform: isDragging ? 'scale(1.025) rotate(0.5deg)' : 'scale(1)',
+                transform: isDragging ? 'scale(1.025) rotate(0.5deg)' : cardHovered ? 'translateY(-2px)' : 'scale(1)',
                 boxShadow: isDragging
                     ? `0 16px 48px ${ch.color}28`
-                    : '0 1px 4px rgba(0,0,0,0.06)',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
+                    : cardHovered
+                        ? `0 10px 28px ${ch.color}1c, 0 2px 6px rgba(0,0,0,0.04)`
+                        : '0 1px 3px rgba(0,0,0,0.05)',
+                transition: 'transform 0.18s ease, box-shadow 0.18s ease, opacity 0.15s ease, border-color 0.18s ease',
                 position: 'relative',
                 zIndex: isDragging ? 10 : 1,
             }}
         >
+            {/* Accent bar */}
+            <div style={{ height: '3px', background: `linear-gradient(90deg, ${ch.color}, ${ch.color}55)` }} />
+
             {/* Header */}
             <div
-                className="flex items-center gap-2.5 px-4 py-3 border-b border-gray-100"
-                style={{ background: ch.bg }}
+                className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100"
+                style={{ background: `linear-gradient(180deg, ${ch.bg}, #ffffff)` }}
             >
                 <div
                     {...dragHandleProps}
@@ -269,8 +306,11 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, isDragging, isOt
                 </div>
 
                 <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-extrabold shrink-0 shadow"
-                    style={{ background: `linear-gradient(135deg, ${ch.color}, ${ch.color}bb)` }}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
+                    style={{
+                        background: `linear-gradient(135deg, ${ch.color}, ${ch.color}bb)`,
+                        boxShadow: `0 4px 10px ${ch.color}40`,
+                    }}
                 >
                     {ch.label.slice(0, 1)}
                 </div>
@@ -283,9 +323,9 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, isDragging, isOt
                 <button
                     onClick={handleToggleEnabled}
                     title={enabled ? 'Hide channel' : 'Show channel'}
-                    className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold border rounded-full transition shrink-0"
+                    className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold border rounded-full transition shrink-0"
                     style={enabled
-                        ? { borderColor: ch.color + '50', color: ch.color, background: 'white' }
+                        ? { borderColor: ch.color + '40', color: ch.color, background: `${ch.color}0d` }
                         : { borderColor: '#d1d5db', color: '#9ca3af', background: '#f9fafb' }
                     }
                 >
@@ -295,8 +335,8 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, isDragging, isOt
 
                 {isCustom && (
                     <span
-                        className="text-[10px] font-extrabold px-2.5 py-1 rounded-full text-white shrink-0"
-                        style={{ background: ch.color }}
+                        className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                        style={{ background: `${ch.color}16`, color: ch.color }}
                     >
                         Custom
                     </span>
@@ -326,7 +366,7 @@ function ChannelCard({ channelId, savedConfig, onSave, onReset, isDragging, isOt
                 </div>
 
                 {/* Quick amounts */}
-                <div>
+                <div className="pt-3.5 border-t border-gray-100">
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
                         Quick Select Amounts{' '}
                         <span className="font-normal normal-case opacity-60">
@@ -399,6 +439,7 @@ export default function DepositConfig() {
     const [loading,      setLoading     ] = useState(true);
     const [channelOrder, setChannelOrder] = useState(ALL_CHANNEL_IDS);
     const [draggingCard, setDraggingCard] = useState(null);
+    useNoSelectWhileDragging(draggingCard !== null);
 
     const cardRefs        = useRef([]);
     const cardDragState   = useRef(null);
