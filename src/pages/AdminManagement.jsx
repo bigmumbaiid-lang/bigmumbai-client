@@ -145,7 +145,7 @@ export default function AdminManagement() {
     };
 
     const fmtDate = (iso) => iso
-        ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        ? new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' })
         : '—';
 
     const superCount  = admins.filter(a => a.role === 'super_admin').length;

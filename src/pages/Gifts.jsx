@@ -508,7 +508,7 @@ function AdminGifts() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
                       <p className="text-xs text-gray-400">
-                        {c.claimedAt ? new Date(c.claimedAt).toLocaleString('en-IN') : '—'}
+                        {c.claimedAt ? new Date(c.claimedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
                       </p>
                     </div>
                     <CheckCircle2 size={16} style={{ color: G }} className="shrink-0" />

@@ -26,11 +26,20 @@ function dispFmt(d) {
 function midnight(d) {
   const x = new Date(d); x.setHours(0,0,0,0); return x;
 }
+// "Now", with Y/M/D read as the IST calendar day rather than the viewer's own
+// device timezone — only used to pick which cell shows the "today" ring and
+// which month the calendar opens to. Everything else in this component is
+// self-consistent local-date arithmetic (parseYmd/toYmd/midnight all agree with
+// each other regardless of timezone), so IST only needs to enter right here.
+function istToday() {
+  const shifted = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  return new Date(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
+}
 
 export default function DateRangePicker({ from, to, onChange, placeholder = 'Select date range', className = '' }) {
   const [open, setOpen]           = useState(false);
-  const [viewYear, setViewYear]   = useState(new Date().getFullYear());
-  const [viewMonth, setViewMonth] = useState(new Date().getMonth());
+  const [viewYear, setViewYear]   = useState(() => istToday().getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => istToday().getMonth());
   const [hover, setHover]         = useState(null);
   const [pos, setPos]             = useState({ top: 0, left: 0 });
   const ref = useRef(null);
@@ -102,7 +111,7 @@ export default function DateRangePicker({ from, to, onChange, placeholder = 'Sel
   const totalDays = new Date(viewYear, viewMonth + 1, 0).getDate();
   const startDow  = new Date(viewYear, viewMonth, 1).getDay();
   const cells     = [...Array(startDow).fill(null), ...Array.from({length: totalDays}, (_, i) => i + 1)];
-  const todayMid  = midnight(new Date());
+  const todayMid  = midnight(istToday());
 
   const getCellStyle = (day) => {
     const d     = midnight(new Date(viewYear, viewMonth, day));

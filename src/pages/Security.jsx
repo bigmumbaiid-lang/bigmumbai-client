@@ -45,38 +45,41 @@ function Badge({ children, color = 'slate' }) {
     );
 }
 
-// Format a Date as YYYY-MM-DD using the browser's LOCAL timezone (not UTC).
-// toISOString() converts to UTC first, which shifts the date in non-UTC timezones.
-function localDateStr(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// IST = UTC+5:30. "Today"/"Last 7 Days"/"Last 30 Days" must anchor to the IST
+// calendar day regardless of the admin's own device timezone — the previous
+// version here used the browser's local time, which drifts from IST whenever
+// the device isn't set to it (an admin device is often not IST).
+const IST_MS = 5.5 * 60 * 60 * 1000;
+
+// IST calendar-day string (YYYY-MM-DD) for a given real Date instant.
+function istDateStr(d) {
+    return new Date(d.getTime() + IST_MS).toISOString().slice(0, 10);
 }
 
-// Convert a YYYY-MM-DD string to the start/end of that local calendar day as a UTC ISO string.
-// The server then does new Date(isoStr) and gets exactly the right UTC boundary.
+// Convert a YYYY-MM-DD string (meant as an IST calendar day) to the real UTC
+// instant of that day's IST start/end.
 function toLocalDayStart(ymd) {
-    const [y, m, d] = ymd.split('-').map(Number);
-    return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+    return new Date(Date.parse(ymd + 'T00:00:00Z') - IST_MS).toISOString();
 }
 function toLocalDayEnd(ymd) {
-    const [y, m, d] = ymd.split('-').map(Number);
-    return new Date(y, m - 1, d, 23, 59, 59, 999).toISOString();
+    return new Date(Date.parse(ymd + 'T00:00:00Z') - IST_MS + 86400000 - 1).toISOString();
 }
 
-// Date preset helpers — returns YYYY-MM-DD in LOCAL time (not UTC).
+// Date preset helpers — returns YYYY-MM-DD as IST calendar days.
 function getPresetDates(preset) {
-    const now     = new Date();
-    const todayStr = localDateStr(now);
+    const now      = new Date();
+    const todayStr = istDateStr(now);
 
     if (preset === 'today')
         return { dateFrom: todayStr, dateTo: todayStr };
 
     if (preset === 'last7') {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
-        return { dateFrom: localDateStr(start), dateTo: todayStr };
+        const start = new Date(now.getTime() - 6 * 86400000);
+        return { dateFrom: istDateStr(start), dateTo: todayStr };
     }
     if (preset === 'last30') {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
-        return { dateFrom: localDateStr(start), dateTo: todayStr };
+        const start = new Date(now.getTime() - 29 * 86400000);
+        return { dateFrom: istDateStr(start), dateTo: todayStr };
     }
     return { dateFrom: '', dateTo: '' };
 }

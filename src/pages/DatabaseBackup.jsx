@@ -217,7 +217,7 @@ export default function DatabaseBackup() {
                                                 {fileData && (
                                                     <p className="text-xs mt-0.5" style={{ color: G }}>
                                                         {totalDocs.toLocaleString()} total documents · {Object.keys(fileData.collections).length} collections
-                                                        {fileData.exportedAt && ` · exported ${new Date(fileData.exportedAt).toLocaleDateString()}`}
+                                                        {fileData.exportedAt && ` · exported ${new Date(fileData.exportedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}`}
                                                     </p>
                                                 )}
                                             </div>
