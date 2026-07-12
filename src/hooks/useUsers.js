@@ -14,6 +14,7 @@ export function useUsers() {
   const debouncedSearch = useDebounce(searchTerm);
 
   const [filter, setFilter] = useState('all');
+  const [sort, setSort] = useState('newest');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -33,6 +34,7 @@ export function useUsers() {
           limit: USERS_PAGE_SIZE,
           search: debouncedSearch,
           filter: activeFilter === 'all' ? '' : activeFilter,
+          sort,
         });
         setUsers(data.users || []);
         setTotalPages(data.totalPages || 1);
@@ -47,10 +49,10 @@ export function useUsers() {
         setLoading(false);
       }
     },
-    [debouncedSearch, filter]
+    [debouncedSearch, filter, sort]
   );
 
-  // Reload from page 1 whenever search or filter changes.
+  // Reload from page 1 whenever search, filter, or sort changes.
   useEffect(() => {
     fetchUsers(1);
   }, [fetchUsers]);
@@ -68,6 +70,11 @@ export function useUsers() {
     // fetchUsers will re-run via useEffect when filter changes
   }, []);
 
+  const changeSort = useCallback((newSort) => {
+    setSort(newSort);
+    // fetchUsers will re-run via useEffect when sort changes
+  }, []);
+
   // Apply `changes` to a single user without a network round-trip.
   const updateUser = useCallback((userId, changes) => {
     setUsers((prev) =>
@@ -83,6 +90,8 @@ export function useUsers() {
     setSearchTerm,
     filter,
     changeFilter,
+    sort,
+    changeSort,
     currentPage,
     totalPages,
     totalUsers,

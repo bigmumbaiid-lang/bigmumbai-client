@@ -104,7 +104,9 @@ export default function CryptoPayments() {
                 const ud = usdtRes.data;
                 const td = trxRes.data;
 
-                // Merge deposits, tag each with its type, sort newest first
+                // Merge deposits, tag each with its type, ranked by when the order
+                // was created (not when it completed) — this page is an order log,
+                // so newest orders should lead regardless of completion status.
                 const combined = [
                     ...(ud.deposits || []).map(d => ({ ...d, _coin: 'USDT' })),
                     ...(td.deposits || []).map(d => ({ ...d, _coin: 'TRX'  })),
@@ -169,7 +171,7 @@ export default function CryptoPayments() {
 
     const exportCSV = () => {
         if (!deposits.length) return;
-        const header = ['Coin', 'Order ID', 'User', 'INR Amount', 'Crypto Amount', 'Status', 'Deposit Address', 'Tx ID', 'Date (IST)'];
+        const header = ['Coin', 'Order ID', 'User', 'INR Amount', 'Crypto Amount', 'Status', 'Deposit Address', 'Tx ID', 'Created Date (IST)', 'Success Date (IST)'];
         const rows = deposits.map(d => [
             d._coin,
             d._id,
@@ -180,6 +182,7 @@ export default function CryptoPayments() {
             d.depositAddress || '',
             d.txId || '',
             new Date(d.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+            d.completedAt ? new Date(d.completedAt).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }) : '',
         ]);
         const csv = [header, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
         const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -345,7 +348,7 @@ export default function CryptoPayments() {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr style={{ background: GL }}>
-                                        {['Order ID', 'Coin', 'User', 'INR Amount', 'Crypto Amount', 'Status', 'Deposit Address', 'Date (IST)'].map(h => (
+                                        {['Order ID', 'Coin', 'User', 'INR Amount', 'Crypto Amount', 'Status', 'Deposit Address', 'Created Date (IST)', 'Success Date (IST)'].map(h => (
                                             <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: G }}>
                                                 {h}
                                             </th>
@@ -356,14 +359,14 @@ export default function CryptoPayments() {
                                     {loading ? (
                                         [...Array(6)].map((_, i) => (
                                             <tr key={i}>
-                                                <td colSpan={8} className="px-5 py-3">
+                                                <td colSpan={9} className="px-5 py-3">
                                                     <div className="h-4 bg-gray-100 animate-pulse" />
                                                 </td>
                                             </tr>
                                         ))
                                     ) : deposits.length === 0 ? (
                                         <tr>
-                                            <td colSpan={8} className="py-16 text-center">
+                                            <td colSpan={9} className="py-16 text-center">
                                                 <ArrowDownToLine size={36} className="mx-auto text-gray-300 mb-3" />
                                                 <p className="text-gray-500 font-medium">No deposits found</p>
                                             </td>
@@ -436,6 +439,14 @@ export default function CryptoPayments() {
                                                         timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
                                                         day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
                                                     })}
+                                                </td>
+                                                <td className="px-5 py-3 text-gray-500 whitespace-nowrap text-xs">
+                                                    {d.completedAt
+                                                        ? new Date(d.completedAt).toLocaleString('en-US', {
+                                                            timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short',
+                                                            day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
+                                                        })
+                                                        : <span className="text-gray-300">—</span>}
                                                 </td>
                                             </tr>
                                         );

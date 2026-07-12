@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNotify } from '../context/NotifyContext';
 import {
   Search, Users as UsersIcon, ShieldCheck,
@@ -51,6 +51,7 @@ export default function Users() {
   const {
     users, loading, error, searchTerm, setSearchTerm,
     filter, changeFilter,
+    sort, changeSort,
     currentPage, totalPages, totalUsers, totalActive, totalBettingOn, totalWithdrawalOn,
     pageSize, fetchUsers, goToPage, updateUser,
   } = useUsers();
@@ -58,22 +59,13 @@ export default function Users() {
   const [activeTab,  setActiveTab ] = useState('information');
   const [modal,      setModal     ] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
-  const [sort,       setSort      ] = useState('newest');
   const [refreshing, setRefreshing] = useState(false);
 
   const closeModal = () => setModal(null);
 
-
-  const visibleUsers = useMemo(() => {
-    const list = [...(users || [])];
-    switch (sort) {
-      case 'balance_high': list.sort((a, b) => (b.money || 0) - (a.money || 0)); break;
-      case 'balance_low':  list.sort((a, b) => (a.money || 0) - (b.money || 0)); break;
-      case 'username':     list.sort((a, b) => (a.username || '').localeCompare(b.username || '')); break;
-      default: break;
-    }
-    return list;
-  }, [users, sort]);
+  // Sorting now happens server-side (before pagination), so this is just the
+  // page's rows as returned — no client-side re-sort needed.
+  const visibleUsers = users || [];
 
   // ── handlers ─────────────────────────────────────────────────────────────
   const handleRefresh = async () => {
@@ -305,7 +297,7 @@ export default function Users() {
                   {activeTab === 'information' && (
                     <Select
                       value={sort}
-                      onChange={setSort}
+                      onChange={changeSort}
                       options={SORT_OPTIONS}
                       width="150px"
                     />

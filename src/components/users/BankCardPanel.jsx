@@ -8,7 +8,7 @@ import DateRangePicker from '../DateRangePicker';
 import { usersApi } from '../../api/users';
 import { useNotify } from '../../context/NotifyContext';
 import AppModal, { ModalBtn, ModalInfoRow } from '../AppModal';
-import { formatDate } from '../../utils/format';
+import { formatDate, formatPhone } from '../../utils/format';
 
 const G  = '#3a7d44';
 const GL = '#e8f5ea';
@@ -366,7 +366,7 @@ export default function BankCardPanel() {
                         <ModalInfoRow label="Bank Name"      value={viewCard.bankName} />
                         <ModalInfoRow label="Account Number" value={viewCard.bankAccount} />
                         <ModalInfoRow label="IFSC Code"      value={viewCard.ifscCode} />
-                        <ModalInfoRow label="Phone"          value={viewCard.phoneNumber || '—'} />
+                        <ModalInfoRow label="Phone"          value={formatPhone(viewCard.phoneNumber)} />
                         <ModalInfoRow label="Added On"       value={formatDate(viewCard.createdAt)} />
                         <ModalInfoRow label="Status" value={
                             <span
