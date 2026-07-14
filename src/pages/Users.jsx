@@ -41,6 +41,7 @@ const OVERVIEW_FILTERS = [
 
 const SORT_OPTIONS = [
   { value: 'newest',       label: 'Newest'   },
+  { value: 'activity',     label: 'Most active' },
   { value: 'balance_high', label: 'Balance ↓' },
   { value: 'balance_low',  label: 'Balance ↑' },
   { value: 'username',     label: 'A – Z'     },

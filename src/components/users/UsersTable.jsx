@@ -5,6 +5,22 @@ import { formatDate } from '../../utils/format';
 const G  = '#3a7d44';
 const GL = '#e8f5ea';
 
+// Derive a live activity status from the user's lastActive timestamp:
+//   🟢 Online (<2 min) · 🟡 Recently active (<10 min) · otherwise "X ago" / Never.
+function activityStatus(lastActive) {
+  if (!lastActive) return { label: 'Never', bg: '#f3f4f6', color: '#6b7280', dot: '#9ca3af' };
+  const mins = Math.floor((Date.now() - new Date(lastActive).getTime()) / 60000);
+  if (mins < 2)  return { label: 'Online',          bg: '#e8f5ea', color: '#15803d', dot: '#22c55e' };
+  if (mins < 10) return { label: 'Recently active', bg: '#fef9c3', color: '#a16207', dot: '#eab308' };
+  let ago;
+  if (mins < 60) ago = `${mins}m ago`;
+  else {
+    const hrs = Math.floor(mins / 60);
+    ago = hrs < 24 ? `${hrs}h ago` : `${Math.floor(hrs / 24)}d ago`;
+  }
+  return { label: ago, bg: '#f3f4f6', color: '#6b7280', dot: '#9ca3af' };
+}
+
 function formatPhone(raw) {
   if (!raw) return '-';
   const digits = String(raw).replace(/\D/g, '');
@@ -81,7 +97,7 @@ const IconBank = (
 );
 
 const COLS = {
-  information: ['Username', 'Phone', 'Balance', 'Account', 'Betting', 'Withdrawal', 'Joined', 'Invite Code'],
+  information: ['Username', 'Phone', 'Balance', 'Status', 'Joined', 'Invite Code'],
   accounts:    ['Username', 'Account Status', 'Betting', 'Withdrawal', 'Role', 'RS Login', 'RS Auto Bet', 'Reset Password'],
   bank:        ['Username', 'Bank Name', 'Status', 'Action'],
   transfer:    ['Username', 'Phone', 'Balance', 'Actions', 'Invite Code'],
@@ -194,31 +210,10 @@ function UserRow({
         <td className="px-6 py-4 text-sm text-gray-600 tabular-nums">{formatPhone(user.phoneNumber)}</td>
         <td className="px-6 py-4 text-sm font-bold text-gray-900">₹{(user.money || 0).toLocaleString('en-US')}</td>
         <td className="px-6 py-4">
-          <Badge
-            bg={user.isActive !== false ? GL : '#fee2e2'}
-            color={user.isActive !== false ? G : '#b91c1c'}
-            dot={user.isActive !== false ? G : '#ef4444'}
-          >
-            {user.isActive !== false ? 'Active' : 'Disabled'}
-          </Badge>
-        </td>
-        <td className="px-6 py-4">
-          <Badge
-            bg={user.allowBetting !== false ? '#ede9fe' : '#fff7ed'}
-            color={user.allowBetting !== false ? '#6d28d9' : '#c2410c'}
-            dot={user.allowBetting !== false ? '#7c3aed' : '#ea580c'}
-          >
-            {user.allowBetting !== false ? 'Enabled' : 'Disabled'}
-          </Badge>
-        </td>
-        <td className="px-6 py-4">
-          <Badge
-            bg={user.allowWithdrawal ? GL : '#fee2e2'}
-            color={user.allowWithdrawal ? G : '#b91c1c'}
-            dot={user.allowWithdrawal ? G : '#ef4444'}
-          >
-            {user.allowWithdrawal ? 'Allowed' : 'Disabled'}
-          </Badge>
+          {(() => {
+            const s = activityStatus(user.lastActive);
+            return <Badge bg={s.bg} color={s.color} dot={s.dot}>{s.label}</Badge>;
+          })()}
         </td>
         <td className="px-6 py-4 text-sm text-gray-500">{formatDate(user.createdAt)}</td>
         <td className="px-6 py-4">
