@@ -1,3 +1,9 @@
+// Take over immediately on update, instead of waiting for every tab running
+// the old service worker to fully close — otherwise icon/text fixes here can
+// silently lag behind a deploy for however long a tab stays open.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
 self.addEventListener('push', (event) => {
     let data = {};
     try {
@@ -9,8 +15,8 @@ self.addEventListener('push', (event) => {
     const title = data.title || 'Notification';
     const options = {
         body: data.body || '',
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/logo192.png',
+        badge: '/logo192.png',
         data: data.data || {},
     };
 
