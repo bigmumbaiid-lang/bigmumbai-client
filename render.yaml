@@ -1,0 +1,18 @@
+previews:
+  generation: automatic
+
+services:
+  - type: web
+    name: bigmumbai-admin-dashboard
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false
+      - key: REACT_APP_FRONTEND_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
