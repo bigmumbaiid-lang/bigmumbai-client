@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useContext } from 'react';
+import { useNotify } from '../context/NotifyContext';
+import { isPushSupported, requestPushPermission } from '../utils/push';
 import AppModal, { ModalBtn } from './AppModal';
 import {
     LayoutDashboard, Users, CreditCard, Banknote, Gift,
     ArrowLeftRight, Megaphone, Bomb, Spade, Shield,
     PanelLeftClose, PanelLeftOpen, LogOut,
     Menu, X, Bitcoin, UserCog, MoreHorizontal, Database, SlidersHorizontal,
+    Bell, BellRing, BellOff,
 } from 'lucide-react';
 
 const G       = '#3a7d44';
@@ -95,14 +98,39 @@ export default function Sidebar() {
     const navigate  = useNavigate();
     const location  = useLocation();
     const { logout, user } = useContext(AuthContext);
+    const notify = useNotify();
 
     const navGroups = buildNavGroups(user?.role === 'super_admin');
     const active    = location.pathname;
 
     const [showSignOutModal, setShowSignOutModal] = useState(false);
+    const [notifStatus, setNotifStatus] = useState('unsupported');
+
+    useEffect(() => {
+        if (isPushSupported()) setNotifStatus(Notification.permission);
+    }, []);
 
     const handleLogout = () => { logout(); navigate('/login'); };
     const handleNav    = (href) => { navigate(href); setIsMobileOpen(false); };
+
+    const handleEnableNotifications = async () => {
+        if (notifStatus === 'granted' || notifStatus === 'loading' || notifStatus === 'unsupported') return;
+        if (notifStatus === 'denied') {
+            notify.warning('Notifications are blocked for this site — enable them in your browser settings to receive payment alerts.', 'Blocked');
+            return;
+        }
+        setNotifStatus('loading');
+        try {
+            const result = await requestPushPermission();
+            setNotifStatus(result);
+            if (result === 'granted') notify.success('You will now receive payment alerts on this device.', 'Notifications enabled');
+            else if (result === 'denied') notify.warning('Notification permission was denied.', 'Notifications blocked');
+            else if (result === 'unsupported') notify.error('Push notifications are not supported in this browser.', 'Not supported');
+        } catch (err) {
+            setNotifStatus(Notification.permission);
+            notify.error(err.message || 'Failed to enable notifications', 'Error');
+        }
+    };
 
     return (
         <>
@@ -312,6 +340,35 @@ export default function Sidebar() {
                     className="shrink-0 px-2.5 py-3"
                     style={{ borderTop: `1px solid ${DIVIDER}` }}
                 >
+                    <button
+                        onClick={handleEnableNotifications}
+                        disabled={notifStatus === 'granted' || notifStatus === 'loading' || notifStatus === 'unsupported'}
+                        title={isCollapsed
+                            ? (notifStatus === 'granted' ? 'Payment alerts enabled'
+                                : notifStatus === 'denied' ? 'Payment alerts blocked'
+                                : notifStatus === 'unsupported' ? 'Not supported on this browser'
+                                : 'Enable payment alerts')
+                            : (notifStatus === 'unsupported' ? 'Not supported on this browser/device' : undefined)}
+                        className={`flex w-full items-center gap-2.5 px-2.5 py-[9px] mb-0.5 text-[13px] font-medium transition-all focus:outline-none ${isCollapsed ? 'justify-center' : ''} ${notifStatus === 'unsupported' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        style={{ color: notifStatus === 'granted' ? G : (notifStatus === 'denied' || notifStatus === 'unsupported') ? '#9ca3af' : '#374151' }}
+                        onMouseEnter={e => { if (notifStatus !== 'granted' && notifStatus !== 'unsupported') e.currentTarget.style.background = '#dceede'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+                    >
+                        {notifStatus === 'granted'
+                            ? <BellRing size={15} className="shrink-0" />
+                            : (notifStatus === 'denied' || notifStatus === 'unsupported')
+                                ? <BellOff size={15} className="shrink-0" />
+                                : <Bell size={15} className="shrink-0" />}
+                        {!isCollapsed && (
+                            <span className="flex-1 truncate text-left">
+                                {notifStatus === 'granted' ? 'Alerts enabled'
+                                    : notifStatus === 'denied' ? 'Alerts blocked'
+                                    : notifStatus === 'loading' ? 'Enabling…'
+                                    : notifStatus === 'unsupported' ? 'Alerts not supported'
+                                    : 'Enable payment alerts'}
+                            </span>
+                        )}
+                    </button>
                     <button
                         onClick={() => setShowSignOutModal(true)}
                         title={isCollapsed ? 'Sign out' : undefined}

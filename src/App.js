@@ -1,8 +1,9 @@
 import './App.css';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { AuthContext, AuthProvider } from './context/AuthContext';
 import { NotifyProvider } from './context/NotifyContext';
+import { refreshPushSubscriptionIfGranted } from './utils/push';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -26,6 +27,10 @@ import DepositConfig from './pages/DepositConfig';
 
 function AppRoutes() {
   const { user } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (user) refreshPushSubscriptionIfGranted().catch(err => console.error('[push] refresh failed:', err.message));
+  }, [user]);
 
   return (
     <Routes>
