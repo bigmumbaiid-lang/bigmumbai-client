@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import axios from "../utils/axios";
+import { unsubscribePush } from "../utils/push";
 
 export const AuthContext = createContext();
 
@@ -21,9 +22,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+        const currentToken = localStorage.getItem("token");
+
         localStorage.removeItem("token");
         setUser(null);
         setToken(null);
+
+        // Best-effort, fire-and-forget — must run with the token captured above,
+        // since it's already gone from localStorage by the time this resolves.
+        if (currentToken) unsubscribePush(currentToken);
     };
 
     useEffect(() => {

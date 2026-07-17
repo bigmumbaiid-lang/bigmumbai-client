@@ -355,6 +355,11 @@ export default function AdminTransactions() {
                         <td className="px-5 py-3.5 max-w-[220px] text-sm">
                           <span className="truncate block">
                             <span style={{ color: detColor, fontWeight: 600 }}>{t.title}</span>
+                            {t.silent && (
+                              <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-gray-200 text-gray-600 align-middle">
+                                Silent
+                              </span>
+                            )}
                             {t.admin      && <span className="text-indigo-500 font-medium"> · {t.admin}</span>}
                             {t.remark && t.type !== 'transfer' && <span className="text-gray-400"> · {t.remark}</span>}
                             {t.multiplier && <span className="text-gray-400"> · {t.multiplier}x</span>}

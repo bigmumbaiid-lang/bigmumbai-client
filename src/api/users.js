@@ -9,9 +9,9 @@ export const usersApi = {
   toggleWithdrawal: (userId) =>
     api.patch(`/user/${userId}/toggle-withdrawal`).then((r) => r.data),
 
-  transferBalance: ({ userId, amount, transferType, remark, password, deductFull, percentage }) =>
+  transferBalance: ({ userId, amount, transferType, remark, password, deductFull, percentage, silent }) =>
     api
-      .post('/dashboard/transfer-balance', { userId, amount, transferType, remark, password, deductFull, percentage })
+      .post('/dashboard/transfer-balance', { userId, amount, transferType, remark, password, deductFull, percentage, silent })
       .then((r) => r.data),
 
   resetPassword: ({ userId, type, newPassword }) =>

@@ -47,3 +47,26 @@ export async function requestPushPermission() {
     if (permission === 'granted') await subscribeAndRegister();
     return permission;
 }
+
+// Call on logout, before the token is dropped from localStorage — stops the
+// server from pushing to this device immediately, instead of waiting for the
+// JWT to expire naturally. `authToken` is passed explicitly (rather than
+// relying on the axios interceptor reading localStorage) because by the time
+// this async call reaches the server, the caller may have already cleared it.
+export async function unsubscribePush(authToken) {
+    if (!isPushSupported()) return;
+    try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager.getSubscription();
+        if (!subscription) return;
+
+        await axios.post(
+            '/push/unsubscribe',
+            { endpoint: subscription.endpoint },
+            { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        await subscription.unsubscribe();
+    } catch (err) {
+        console.error('[push] unsubscribe on logout failed:', err.message);
+    }
+}

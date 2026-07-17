@@ -5,12 +5,13 @@ import { usersApi } from '../../api/users';
 import { TRANSFER_TYPE } from '../../constants/users';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const QUICK_AMOUNTS = [1000, 2000, 5000, 7000, 14000, 28000, 42000];
+const QUICK_AMOUNTS = [1000, 2000, 5000, 7000,10000, 14000,16000,20000, 28000,30000,40000, 42000];
 
 export default function TransferModal({ user, transferType, onClose, onSuccess }) {
     const notify = useNotify();
     const [amount,    setAmount   ] = useState('');
     const [remark,    setRemark   ] = useState('');
+    const [silent,    setSilent   ] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     const formRef = useRef(null);
@@ -32,9 +33,10 @@ export default function TransferModal({ user, transferType, onClose, onSuccess }
                 amount: num,
                 transferType,
                 remark: remark.trim() || undefined,
+                silent,
             });
             onSuccess(user._id, { money: data.data.newBalance });
-            notify.success(`₹${num.toLocaleString('en-US')} ${isIncrease ? 'added to' : 'deducted from'} @${user.username}'s balance. New balance: ₹${data.data.newBalance}`);
+            notify.success(`₹${num.toLocaleString('en-US')} ${isIncrease ? 'added to' : 'deducted from'} @${user.username}'s balance. New balance: ₹${data.data.newBalance}${silent ? ' (silent — hidden from client)' : ''}`);
             onClose();
         } catch (err) {
             notify.error(err.response?.data?.message || 'Failed to update balance');
@@ -108,6 +110,22 @@ export default function TransferModal({ user, transferType, onClose, onSuccess }
                         rows={2}
                         placeholder="Reason for this transfer…"
                     />
+
+                    {/* Silent transfer */}
+                    <label className="flex items-start gap-2.5 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={silent}
+                            onChange={(e) => setSilent(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-gray-700"
+                        />
+                        <span>
+                            <span className="block text-sm font-semibold text-gray-700">Silent transfer</span>
+                            <span className="block text-xs text-gray-400 mt-0.5">
+                                Balance still updates normally and stays visible in admin transactions, but this entry will not appear in @{user.username}'s own transaction history.
+                            </span>
+                        </span>
+                    </label>
 
                     {/* Preview */}
                     {Number(amount) > 0 && (

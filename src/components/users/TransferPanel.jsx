@@ -295,6 +295,11 @@ export default function TransferPanel() {
                                                             : <TrendingDown size={11} />}
                                                         {isAdd ? 'Added' : 'Deducted'}
                                                     </span>
+                                                    {t.silent && (
+                                                        <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-gray-200 text-gray-600">
+                                                            Silent
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-5 py-3.5 text-sm font-bold tabular-nums" style={{ color: isAdd ? G : '#b91c1c' }}>
                                                     {isAdd ? '+' : '-'}{inr(t.amount)}
