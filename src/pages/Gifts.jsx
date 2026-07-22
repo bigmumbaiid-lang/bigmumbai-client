@@ -228,7 +228,7 @@ function AdminGifts() {
               { label: 'Total Gifts',   value: stats.total,                                            icon: Gift,        iconColor: '#2563eb', iconBg: '#eff6ff', valueColor: '#111827' },
               { label: 'Active',        value: stats.active,                                           icon: Power,       iconColor: G,         iconBg: GL,        valueColor: G         },
               { label: 'Total Claims',  value: stats.totalClaims,                                      icon: Users,       iconColor: '#d97706', iconBg: '#fef9c3', valueColor: '#111827' },
-              { label: 'Distributed',   value: `₹${stats.distributed.toLocaleString('en-IN')}`,        icon: IndianRupee, iconColor: '#be123c', iconBg: '#fff1f2', valueColor: '#be123c' },
+              { label: 'Distributed',   value: `₹${stats.distributed.toLocaleString('en-US')}`,        icon: IndianRupee, iconColor: '#be123c', iconBg: '#fff1f2', valueColor: '#be123c' },
             ].map(({ label, value, icon: Icon, iconColor, iconBg, valueColor }) => (
               <div key={label} className="bg-white border border-gray-200 p-5 flex items-start justify-between hover:border-[#3a7d44]/40 transition-colors">
                 <div>
